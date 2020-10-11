@@ -1,0 +1,19 @@
+name: build
+on:
+  push:
+    branches: [ 💥 ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: goto-bus-stop/setup-zig@v1
+        with:
+          version: master
+      - name: Build
+        run: |
+          zig build -Dtarget=i386-windows-gnu -Drelease-small=true --verbose
+          zig build bootstrap -Dtarget=i386-windows-gnu -Drelease-small=true --verbose
