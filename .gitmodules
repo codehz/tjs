@@ -3,4 +3,4 @@
 	url = https://github.com/bellard/quickjs
 [submodule "vendor/tinycc"]
 	path = vendor/tinycc
-	url = git@repo.or.cz:tinycc.git
+	url = https://repo.or.cz/tinycc.git
