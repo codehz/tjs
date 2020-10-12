@@ -8,7 +8,7 @@ Toy project, no guarantee of safety, use at your own risk.
 
 ```js
 // yes, it support es-module
-import Compiler from "builtin:c";
+import { Compiler } from "builtin:c";
 // initialize compiler
 const compiler = new Compiler("memory");
 // link to user32 to use MessageBoxA
