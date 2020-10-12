@@ -4,7 +4,6 @@
 #define TCC_TARGET_X86_64 1
 #else
 #define TCC_TARGET_I386 1
-#define 
 #endif
 #ifdef _WIN32
 #define TCC_TARGET_PE
