@@ -5,6 +5,10 @@ on:
 
 jobs:
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, i386]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
@@ -15,9 +19,9 @@ jobs:
           version: master
       - name: Build
         run: |
-          zig build -Dtarget=i386-windows-gnu -Drelease-small=true --verbose
-          zig build bootstrap -Dtarget=i386-windows-gnu -Drelease-small=true --verbose
+          zig build -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
+          zig build bootstrap -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
       - uses: actions/upload-artifact@v2
         with:
-          name: bin
+          name: bin-${{ matrix.arch }}-windows
           path: zig-cache/bin
