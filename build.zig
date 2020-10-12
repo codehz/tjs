@@ -123,6 +123,7 @@ fn bootstrap(b: *Builder, tcc: *std.build.LibExeObjStep, target: std.zig.CrossTa
                     .{ .path = "lib", .base = "libtcc1" },
                     .{ .path = "lib", .base = "bt-exe" },
                     .{ .path = "lib", .base = "bt-log" },
+                    .{ .path = "lib", .base = "va-list" },
                     .{ .path = "lib", .base = "dsohandle" },
                     .{ .path = "lib", .base = "alloca86_64", .ext = .S },
                     .{ .path = "lib", .base = "alloca86_64-bt", .ext = .S },
