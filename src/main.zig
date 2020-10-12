@@ -45,7 +45,10 @@ pub fn main() anyerror!void {
         return error.NotEnoughArguments;
     }
 
-    const file = try std.fs.cwd().openFile(args[1], .{});
+    const filename = try std.cstr.addNullByte(allocator, args[1]);
+    defer allocator.free(filename);
+
+    const file = try std.fs.cwd().openFile(filename, .{});
     const contents = try file.readToEndAllocOptions(allocator, 1024 * 1024 * 1024, null, 1, 0);
 
     const rt = quickjs.JsRuntime.init();
@@ -67,7 +70,7 @@ pub fn main() anyerror!void {
 
     ctx.addHelper(null);
 
-    const val = ctx.eval(contents, "input", .{ .module = true });
+    const val = ctx.eval(contents, filename, .{ .module = true });
     if (val.getNormTag() == .Exception) {
         ctx.dumpError();
     }
