@@ -4,28 +4,6 @@ const TinyCC = @import("./tcc.zig").TinyCC;
 const quickjs = @import("./quickjs.zig");
 const GlobalContext = @import("./context.zig");
 
-pub extern "c" fn printf(format: [*:0]const u8, ...) c_int;
-
-fn getBasePath(buf: []u8) ![:0]const u8 {}
-
-fn generateObject() !void {
-    const tcc = try TinyCC.init();
-    defer tcc.deinit();
-
-    try tcc.setup();
-    try tcc.apply(.{
-        .input = .{
-            .content =
-            \\#include <stdio.h>
-            \\__declspec(dllexport) void target(void) {
-            \\  printf("from object!\n");
-            \\}
-        },
-    });
-    try tcc.apply(.{ .output = .dll });
-    try tcc.writeFile("test.plugin");
-}
-
 const Loader = struct {
     header: quickjs.JsModuleLoader = .{ .loaderfn = func },
 
