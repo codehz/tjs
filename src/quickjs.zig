@@ -19,13 +19,13 @@ pub const JsModuleLoader = struct {
     loaderfn: fn (self: *@This(), ctx: *JsContext, name: [*:0]const u8) ?*JsModuleDef,
 
     fn normalize(ctx: *JsContext, base: [*:0]const u8, name: [*:0]const u8, ptr: ?*c_void) callconv(.C) [*:0]const u8 {
-        const self = @ptrCast(*@This(), @alignCast(4, ptr.?));
+        const self = @ptrCast(*@This(), @alignCast(@alignOf(*@This()), ptr.?));
         const f = self.*.normalizefn.?;
         return f(self, ctx, base, name);
     }
 
     fn trampoline(ctx: *JsContext, name: [*:0]const u8, ptr: ?*c_void) callconv(.C) ?*JsModuleDef {
-        const self = @ptrCast(*@This(), @alignCast(4, ptr.?));
+        const self = @ptrCast(*@This(), @alignCast(@alignOf(*@This()), ptr.?));
         return self.*.loaderfn(self, ctx, name);
     }
 };
@@ -373,8 +373,17 @@ pub const PropertyDefinition = struct {
     }
 };
 
-pub const JsValue = extern enum(if (is64bit) u128 else u64) {
-    _,
+pub const JsValue = extern struct {
+    storage: if (is64bit)
+        extern struct {
+            a: u64,
+            b: i64,
+        }
+    else
+        extern struct {
+            a: u32,
+            b: i32,
+        },
 
     fn box(comptime T: type) type {
         return if (is64bit)
@@ -391,7 +400,7 @@ pub const JsValue = extern enum(if (is64bit) u128 else u64) {
                 }
 
                 pub fn from(e: JsValue) @This() {
-                    return @bitCast(@This(), @enumToInt(e));
+                    return @bitCast(@This(), e);
                 }
 
                 comptime {
@@ -412,11 +421,11 @@ pub const JsValue = extern enum(if (is64bit) u128 else u64) {
                 }
 
                 pub fn from(e: JsValue) @This() {
-                    return @bitCast(@This(), @enumToInt(e));
+                    return @bitCast(@This(), e);
                 }
 
                 comptime {
-                    std.debug.assert(T == f64 or @bitSizeOf(@This()) == 64);
+                    std.debug.assert(is64bit or T == f64 or @bitSizeOf(@This()) == 64);
                 }
             },
             f64 => extern struct {
@@ -431,11 +440,11 @@ pub const JsValue = extern enum(if (is64bit) u128 else u64) {
                 }
 
                 pub fn from(e: JsValue) @This() {
-                    return @bitCast(@This(), @enumToInt(e) - (JS_FLOAT64_TAG_ADDEND << 32));
+                    return @bitCast(@This(), e.storage - (JS_FLOAT64_TAG_ADDEND << 32));
                 }
 
                 comptime {
-                    std.debug.assert(T != f64 or @bitSizeOf(@This()) == 64);
+                    std.debug.assert(is64bit or T != f64 or @bitSizeOf(@This()) == 64);
                 }
             },
             else => @compileError("unsupported type: " ++ @typeName(T)),
@@ -521,7 +530,7 @@ pub const JsValue = extern enum(if (is64bit) u128 else u64) {
             bool, usize, i32, f64 => box(@TypeOf(val)).transmit(val, @enumToInt(tag)),
             else => @compileError("unsupported type: " ++ @typeName(@TypeOf(val))),
         };
-        return @intToEnum(@This(), r);
+        return @bitCast(@This(), r);
     }
 
     pub fn fromRaw(val: RawValue) @This() {
@@ -811,20 +820,22 @@ pub const JsValue = extern enum(if (is64bit) u128 else u64) {
     }
 
     pub fn defineProperty(self: @This(), ctx: *JsContext, atom: JsAtom, def: PropertyDefinition) !bool {
-        var val = fromRaw(.Undefined);
-        var getter = fromRaw(.Undefined);
-        var setter = fromRaw(.Undefined);
         switch (def.data) {
             .none => {},
             .getset => |data| {
-                if (data.getter) |fun| getter = fun;
-                if (data.setter) |fun| setter = fun;
+                const getter = data.getter orelse fromRaw(.Undefined);
+                const setter = data.setter orelse fromRaw(.Undefined);
+                const ret = JS_DefinePropertyGetSet(ctx, self, atom, getter, setter, def.toFlags());
+                if (ret == -1) return error.NotAnObject;
+                return ret != 0;
             },
             .value => |data| {
-                val = data;
+                const ret = JS_DefinePropertyValue(ctx, self, atom, data, def.toFlags());
+                if (ret == -1) return error.NotAnObject;
+                return ret != 0;
             },
         }
-        const ret = JS_DefineProperty(ctx, self, atom, val, getter, setter, def.toFlags());
+        const ret = JS_DefineProperty(ctx, self, atom, fromRaw(.Undefined), fromRaw(.Undefined), fromRaw(.Undefined), def.toFlags());
         if (ret == -1) return error.NotAnObject;
         return ret != 0;
     }

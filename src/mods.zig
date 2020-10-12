@@ -226,8 +226,8 @@ pub const c = opaque {
 
                 fn size(self: @This()) usize {
                     const raw: usize = switch (self) {
-                        .integer => 4,
-                        .double => 8,
+                        .integer => @sizeOf(i32),
+                        .double => @sizeOf(f64),
                         .string => @sizeOf(usize),
                     };
                     return (@divTrunc(raw - 1, @sizeOf(usize)) + 1) * @sizeOf(usize);
@@ -257,7 +257,7 @@ pub const c = opaque {
                 string: [:0]const u8,
 
                 fn fill(comptime input: usize, writer: anytype) !void {
-                    const size = @mod(4, @sizeOf(usize));
+                    const size = @mod(input, @sizeOf(usize));
                     if (size == 0) return;
                     const z = [1]u8{0} ** size;
                     try writer.writeAll(&z);
@@ -268,12 +268,12 @@ pub const c = opaque {
                         .integer => |val| {
                             const bytes = std.mem.toBytes(val);
                             try writer.writeAll(&bytes);
-                            try fill(4, writer);
+                            try fill(bytes.len, writer);
                         },
                         .double => |val| {
                             const bytes = std.mem.toBytes(val);
                             try writer.writeAll(&bytes);
-                            try fill(8, writer);
+                            try fill(bytes.len, writer);
                         },
                         .string => |val| {
                             const bytes = std.mem.toBytes(@ptrToInt(val.ptr));
@@ -363,7 +363,7 @@ pub const c = opaque {
                 if (self.result) |res| fifo.update(res.size());
                 for (self.arguments) |arg, i| {
                     const data = Data.from(arg, args[i], ctx, allocator) catch |e| return ctx.throw(.{ .Type = @errorName(e) });
-                    data.dump(writer) catch return ctx.throw(.{ .Internal = "unknown" });
+                    data.dump(writer) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
                     argsdata.appendAssumeCapacity(data);
                 }
                 self.funcptr.?(buf.ptr);
@@ -446,6 +446,7 @@ pub const c = opaque {
                     .func = .{ .constructor = new },
                 },
             });
+            ctx.setConstructorBit(constructor, true) catch {};
             proto = js.JsValue.init(ctx, .{
                 .Object = .{ .class = class, .temp = &template },
             });
