@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     container: alpine:latest
     steps:
+      - run: apk add git musl-dev
       - uses: actions/checkout@v2
         with:
           submodules: recursive
