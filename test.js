@@ -1,6 +1,6 @@
-
-import { Compiler } from "c";
+import { Compiler } from "builtin:c";
 const compiler = new Compiler("memory");
+console.log(import.meta.url);
 compiler.link("user32");
 compiler.compile(`
 #include <stdio.h>
@@ -23,6 +23,6 @@ const obj = compiler.relocate({
   add: { arguments: ["double", "double"], result: "double" },
   msgbox: { arguments: ["string"] }
 });
-console.log(obj.hello("test"));
+console.log(obj.hello(import.meta.url));
 console.log(obj.add(1, 2));
-obj.msgbox("hi");
+obj.msgbox(`from ${import.meta.url}`);

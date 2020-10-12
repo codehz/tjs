@@ -15,7 +15,14 @@ fn isStringLiteral(comptime T: type) bool {
 }
 
 pub const JsModuleLoader = struct {
+    normalizefn: ?fn (self: *@This(), ctx: *JsContext, base: [*:0]const u8, name: [*:0]const u8) [*:0]const u8 = null,
     loaderfn: fn (self: *@This(), ctx: *JsContext, name: [*:0]const u8) ?*JsModuleDef,
+
+    fn normalize(ctx: *JsContext, base: [*:0]const u8, name: [*:0]const u8, ptr: ?*c_void) callconv(.C) [*:0]const u8 {
+        const self = @ptrCast(*@This(), @alignCast(4, ptr.?));
+        const f = self.*.normalizefn.?;
+        return f(self, ctx, base, name);
+    }
 
     fn trampoline(ctx: *JsContext, name: [*:0]const u8, ptr: ?*c_void) callconv(.C) ?*JsModuleDef {
         const self = @ptrCast(*@This(), @alignCast(4, ptr.?));
@@ -37,7 +44,12 @@ pub const JsRuntime = opaque {
     }
 
     pub fn setModuleLoader(self: *@This(), loader: *JsModuleLoader) void {
-        JS_SetModuleLoaderFunc(self, null, JsModuleLoader.trampoline, @ptrCast(?*c_void, loader));
+        JS_SetModuleLoaderFunc(
+            self,
+            if (loader.normalizefn != null) JsModuleLoader.normalize else null,
+            JsModuleLoader.trampoline,
+            @ptrCast(?*c_void, loader),
+        );
     }
 
     pub fn setOpaque(self: *@This(), ptr: ?*c_void) void {
@@ -178,6 +190,14 @@ pub const JsAtom = extern enum(u32) {
     extern fn JS_AtomToString(ctx: *JsContext, atom: JsAtom) JsValue;
     extern fn JS_AtomToCString(ctx: *JsContext, atom: JsAtom) ?[*:0]const u8;
     extern fn JS_ValueToAtom(ctx: *JsContext, val: JsValue) JsAtom;
+
+    pub fn comptimeAtom(ctx: *JsContext, comptime name: []const u8) @This() {
+        const Storage = opaque {
+            var atom: JsAtom = .invalid;
+        };
+        if (Storage.atom == .invalid) Storage.atom = initAtom(ctx, name);
+        return Storage.atom;
+    }
 
     pub fn initAtom(ctx: *JsContext, val: anytype) @This() {
         return switch (@TypeOf(val)) {
@@ -465,6 +485,10 @@ pub const JsValue = extern enum(if (is64bit) u128 else u64) {
         return box(usize).from(self).val;
     }
 
+    pub fn getPointerT(self: @This(), comptime T: type) ?*T {
+        return @intToPtr(?*T, self.getPointer());
+    }
+
     pub fn getValue(self: @This()) RawValue {
         const integer = box(i32).from(self).val;
         const boolean = box(bool).from(self).val;
@@ -528,7 +552,7 @@ pub const JsValue = extern enum(if (is64bit) u128 else u64) {
                 }
                 break :blk fromRaw(.{ .Float64 = val });
             },
-            bool => initValue(.{ .Boolean = val }),
+            bool => fromRaw(.{ .Boolean = val }),
             else => @compileError("unsupported type: " ++ @typeName(@TypeOf(val))),
         };
     }
@@ -913,7 +937,7 @@ extern fn JS_ParseJSON2(ctx: *JsContext, buf: [*:0]const u8, buf_len: usize, fil
 extern fn JS_JSONStringify(ctx: *JsContext, obj: JsValue, replacer: JsValue, space0: JsValue) JsValue;
 extern fn JS_NewArrayBufferCopy(ctx: *JsContext, buf: [*]const u8, len: usize) JsValue;
 
-const JsModuleNormalizeFunc = fn (*JsContext, [*:0]const u8, [*:0]const u8, ?*c_void) callconv(.C) [*:0]u8;
+const JsModuleNormalizeFunc = fn (*JsContext, [*:0]const u8, [*:0]const u8, ?*c_void) callconv(.C) [*:0]const u8;
 const JsModuleLoaderFunc = fn (*JsContext, [*:0]const u8, ?*c_void) callconv(.C) ?*JsModuleDef;
 extern fn JS_SetModuleLoaderFunc(rt: *JsRuntime, module_normalize: ?JsModuleNormalizeFunc, module_loader: JsModuleLoaderFunc, ptr: ?*c_void) void;
 extern fn JS_GetImportMeta(ctx: *JsContext, m: *JsModuleDef) JsValue;
