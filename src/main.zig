@@ -7,18 +7,6 @@ const GlobalContext = @import("./context.zig");
 const Loader = struct {
     header: quickjs.JsModuleLoader = .{ .loaderfn = func },
 
-    fn log_print(ctx: *quickjs.JsContext, this: quickjs.JsValue, argc: c_int, argv: [*]quickjs.JsValue) callconv(.C) quickjs.JsValue {
-        const out = std.io.getStdOut().writer();
-        out.writeAll("here\n") catch {};
-        for (argv[0..@intCast(usize, argc)]) |val| {
-            const str: quickjs.JsString = val.as(quickjs.JsString, ctx) catch return ctx.throw(.{ .Internal = "failed to conver to string" });
-            defer str.deinit(ctx);
-            out.print("{}", .{str.data}) catch {};
-        }
-        out.writeByte('\n') catch {};
-        return quickjs.JsValue.make(false, .Undefined);
-    }
-
     fn func(self: *quickjs.JsModuleLoader, ctx: *quickjs.JsContext, name: [*:0]const u8) ?*quickjs.JsModuleDef {
         const E = quickjs.JsCFunctionListEntry;
         const cmp = std.cstr.cmp;
@@ -49,7 +37,9 @@ pub fn main() anyerror!void {
     defer allocator.free(filename);
 
     const file = try std.fs.cwd().openFile(filename, .{});
+    defer file.close();
     const contents = try file.readToEndAllocOptions(allocator, 1024 * 1024 * 1024, null, 1, 0);
+    defer allocator.free(contents);
 
     const rt = quickjs.JsRuntime.init();
     defer rt.deinit();
