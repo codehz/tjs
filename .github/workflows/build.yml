@@ -9,6 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x86_64, i386]
+        os: [windows, ubuntu]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
@@ -17,11 +18,17 @@ jobs:
       - uses: goto-bus-stop/setup-zig@v1
         with:
           version: master
-      - name: Build
+      - name: Build on windows
+        if: runner.os == 'Windows'
+        run: |
+          zig build -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
+          zig build bootstrap -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
+      - name: Build on linux
+        if: runner.os == 'Linux'
         run: |
           zig build -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
           zig build bootstrap -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
       - uses: actions/upload-artifact@v2
         with:
-          name: bin-${{ matrix.arch }}-windows
+          name: bin-${{ matrix.arch }}-${{ runner.os }}
           path: zig-cache/bin
