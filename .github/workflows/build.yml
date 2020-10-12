@@ -26,8 +26,8 @@ jobs:
       - name: Build on linux
         if: runner.os == 'Linux'
         run: |
-          zig build -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
-          zig build bootstrap -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
+          zig build -Dtarget=${{ matrix.arch }}-Linux-musl -Drelease-small=true --verbose
+          zig build bootstrap -Dtarget=${{ matrix.arch }}-Linux-musl -Drelease-small=true --verbose
       - uses: actions/upload-artifact@v2
         with:
           name: bin-${{ matrix.arch }}-${{ runner.os }}
