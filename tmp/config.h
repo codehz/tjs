@@ -6,4 +6,6 @@
 #endif
 #ifdef _WIN32
 #define TCC_TARGET_PE
+#else
+#define TCC_LIBTCC1 "lib/libtcc1.a"
 #endif

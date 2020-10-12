@@ -15,10 +15,10 @@ const Tcc1Info = struct {
         path: []const u8,
         name: []const u8,
     };
-    global_incs: []const []const u8,
-    extra_incs: []const []const u8,
+    global_incs: ?[]const []const u8 = null,
+    extra_incs: ?[]const []const u8 = null,
     objs: []const Compile,
-    libs: []const Library,
+    libs: ?[]const Library = null,
 
     fn setupRun(b: *Builder, run: *std.build.RunStep, cmdline: []const []const u8, comptime format: []const u8, args: anytype) *std.build.Step {
         run.step.dependOn(&b.addLog(format ++ "\n", args).step);
@@ -35,14 +35,16 @@ const Tcc1Info = struct {
             try args.append(try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{}/{}.{}", .{ obj.path, obj.base, std.meta.tagName(obj.ext) }));
             try args.append("-I");
             try args.append("vendor/tinycc/include");
-            for (self.global_incs) |inc| {
+            try args.append("-I");
+            try args.append("tmp");
+            if (self.global_incs) |list| for (list) |inc| {
                 try args.append("-I");
                 try args.append(try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{}", .{inc}));
-            }
-            for (self.extra_incs) |inc| {
+            };
+            if (self.extra_incs) |list| for (list) |inc| {
                 try args.append("-I");
                 try args.append(try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{}", .{inc}));
-            }
+            };
             r.dependOn(setupRun(b, tcc.run(), args.toOwnedSlice(), "CC {}/{}", .{ obj.path, obj.base }));
         }
         {
@@ -59,24 +61,24 @@ const Tcc1Info = struct {
             .install_dir = .Bin,
             .install_subdir = "lib",
         }).step);
-        for (self.libs) |lib| {
+        if (self.libs) |list| for (list) |lib| {
             r.dependOn(&b.addInstallBinFile(
                 try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{}/{}", .{ lib.path, lib.name }),
                 try std.fmt.allocPrint(b.allocator, "lib/{}", .{lib.name}),
             ).step);
-        }
+        };
         r.dependOn(&b.addInstallDirectory(.{
             .source_dir = "vendor/tinycc/include",
             .install_dir = .Bin,
             .install_subdir = "include",
         }).step);
-        for (self.global_incs) |inc| {
+        if (self.global_incs) |list| for (list) |inc| {
             r.dependOn(&b.addInstallDirectory(.{
                 .source_dir = try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{}", .{inc}),
                 .install_dir = .Bin,
                 .install_subdir = "include",
             }).step);
-        }
+        };
     }
 };
 
@@ -115,6 +117,19 @@ fn bootstrap(b: *Builder, tcc: *std.build.LibExeObjStep, target: std.zig.CrossTa
                 .{ .path = "win32/lib", .name = "ws2_32.def" },
             },
         },
+        .linux => switch (native.target.cpu.arch) {
+            .x86_64 => Tcc1Info{
+                .objs = &[_]Tcc1Info.Compile{
+                    .{ .path = "lib", .base = "libtcc1" },
+                    .{ .path = "lib", .base = "bt-exe" },
+                    .{ .path = "lib", .base = "bt-log" },
+                    .{ .path = "lib", .base = "dsohandle" },
+                    .{ .path = "lib", .base = "alloca86_64", .ext = .S },
+                    .{ .path = "lib", .base = "alloca86_64-bt", .ext = .S },
+                },
+            },
+            else => return error.TODO,
+        },
         else => return error.TODO,
     };
     try info.build(b, tcc, ret);
@@ -145,7 +160,6 @@ pub fn build(b: *Builder) !void {
     tcc.addCSourceFile("vendor/tinycc/tcc.c", &[_][]const u8{ "-Wno-everything", "-DONE_SOURCE=0" });
     tcc.setTarget(target);
     tcc.setBuildMode(mode);
-    tcc.install();
 
     const quickjs = b.addStaticLibrary("quickjs", null);
     quickjs.linkLibC();
@@ -153,7 +167,6 @@ pub fn build(b: *Builder) !void {
     quickjs.addCSourceFile("vendor/quickjs/libregexp.c", &[_][]const u8{ "-Wno-everything", "-DEMSCRIPTEN", "-DCONFIG_VERSION=\"unknown\"" });
     quickjs.addCSourceFile("vendor/quickjs/libunicode.c", &[_][]const u8{ "-Wno-everything", "-DEMSCRIPTEN", "-DCONFIG_VERSION=\"unknown\"" });
     quickjs.addCSourceFile("vendor/quickjs/cutils.c", &[_][]const u8{ "-Wno-everything", "-DEMSCRIPTEN", "-DCONFIG_VERSION=\"unknown\"" });
-    quickjs.addCSourceFile("vendor/quickjs/quickjs-libc.c", &[_][]const u8{ "-Wno-everything", "-DEMSCRIPTEN", "-DCONFIG_VERSION=\"unknown\"" });
     quickjs.setTarget(target);
     quickjs.setBuildMode(mode);
     quickjs.install();

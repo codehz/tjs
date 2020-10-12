@@ -70,14 +70,6 @@ pub const JsContext = opaque {
         return JS_NewContext(rt) orelse return error.FailedToCreateContext;
     }
 
-    pub fn addHelper(self: *@This(), args: ?[][*:0]const u8) void {
-        if (args) |nonnull| {
-            js_std_add_helpers(self, @intCast(c_int, nonnull.len), nonnull.ptr);
-        } else {
-            js_std_add_helpers(self, -1, null);
-        }
-    }
-
     pub fn deinit(self: *@This()) void {
         JS_FreeContext(self);
     }
@@ -148,7 +140,15 @@ pub const JsContext = opaque {
     }
 
     pub fn dumpError(self: *@This()) void {
-        js_std_dump_error(self);
+        const ex = self.getException();
+        defer ex.deinit(self);
+        if (ex.getNormTag() != .Exception) return;
+        if (ex.getProperty(self, JsAtom.comptimeAtom(self, "stack"))) |stack| {
+            defer stack.deinit(self);
+            const str = stack.as(JsString, self) catch return;
+            defer str.deinit(self);
+            std.log.err("{}", .{str.data});
+        }
     }
 
     pub fn setConstructor(self: *@This(), func: JsValue, proto: JsValue) void {
@@ -1271,9 +1271,6 @@ extern fn JS_ThrowReferenceError(ctx: *JsContext, fmt: [*:0]const u8, ...) JsVal
 extern fn JS_ThrowRangeError(ctx: *JsContext, fmt: [*:0]const u8, ...) JsValue;
 extern fn JS_ThrowInternalError(ctx: *JsContext, fmt: [*:0]const u8, ...) JsValue;
 extern fn JS_ThrowOutOfMemory(ctx: *JsContext) JsValue;
-
-extern fn js_std_dump_error(ctx: *JsContext) void;
-extern fn js_std_add_helpers(ctx: *JsContext, argc: c_int, argv: ?[*][*:0]const u8) void;
 
 pub const JsError = union(enum) {
     Syntax: []const u8,

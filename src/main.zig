@@ -130,8 +130,6 @@ pub fn main() anyerror!void {
 
     try loadAllMods(@import("./mods.zig"), ctx);
 
-    ctx.addHelper(null);
-
     const val = ctx.eval(contents, rooturl, .{ .module = true, .compile = true });
     if (val.getNormTag() == .Module) {
         _ = try setModuleMeta(ctx, val, rooturl, true);

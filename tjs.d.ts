@@ -36,3 +36,8 @@ declare module "builtin:c" {
     relocate<Recipe extends Record<string, BasicRecipeItem>>(recipe: Recipe): Relocated<Recipe>;
   }
 }
+
+declare module "builtin:io" {
+  export function log(...args: any[]): void;
+  export function err(...args: any[]): void;
+}
