@@ -630,7 +630,7 @@ pub const JsValue = extern struct {
     }
 
     pub fn hasRefCount(self: @This()) bool {
-        return @bitCast(usize, self.getTag()) >= @bitCast(u64, @enumToInt(JsTag.First));
+        return @bitCast(usize, self.getTag()) >= @bitCast(usize, @enumToInt(JsTag.First));
     }
 
     pub fn deinit(self: @This(), ctx: *JsContext) void {
