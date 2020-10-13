@@ -139,6 +139,15 @@ fn bootstrap(b: *Builder, tcc: *std.build.LibExeObjStep, target: std.zig.CrossTa
                     .{ .path = "lib", .base = "alloca86-bt", .ext = .S },
                 },
             },
+            .aarch64 => Tcc1Info{
+                .objs = &[_]Tcc1Info.Compile{
+                    .{ .path = "lib", .base = "lib-arm64" },
+                    .{ .path = "lib", .base = "fetch_and_add_arm64", .ext = .S },
+                    .{ .path = "lib", .base = "bt-exe" },
+                    .{ .path = "lib", .base = "bt-log" },
+                    .{ .path = "lib", .base = "dsohandle" },
+                },
+            },
             else => return error.TODO,
         },
         else => return error.TODO,
