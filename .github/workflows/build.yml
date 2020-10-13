@@ -48,7 +48,7 @@ jobs:
           fileName: rcedit-x64.exe
           out-file-path: ${{ runner.temp }}/bin/rcedit.exe
       - name: Setup rcedit
-        run: Add-Content -Value "${{ runner.temp }}\bin" -Path $env:GITHUB_PATH -Encoding utf8
+        run: echo "${{ runner.temp }}\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build on windows
         run: |
           zig build -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
