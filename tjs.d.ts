@@ -6,6 +6,7 @@ declare module "builtin:c" {
     | "integer"
     | "double"
     | "string"
+    | "wstring"
     | "vector";
   export type ResultSupportedType =
     | "integer"
@@ -17,6 +18,7 @@ declare module "builtin:c" {
   type TypeMap<T extends SupportedType | void> =
     T extends "integer" | "double" ? number :
     T extends "string" ? string :
+    T extends "wstring" ? string :
     T extends "vector" ? ArrayBuffer :
     T extends void ? void :
     never;
