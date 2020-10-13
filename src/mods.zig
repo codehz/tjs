@@ -400,7 +400,10 @@ pub const c = opaque {
                 if (self.result) |res| fifo.update(res.size());
                 for (self.arguments) |arg, i| {
                     const data = Data.from(arg, args[i], ctx, allocator) catch |e| return ctx.throw(.{ .Type = @errorName(e) });
-                    data.dump(writer) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
+                    data.dump(writer) catch |e| {
+                        data.deinit(allocator);
+                        return ctx.throw(.{ .Internal = @errorName(e) });
+                    };
                     argsdata.appendAssumeCapacity(data);
                 }
                 self.funcptr.?(buf.ptr);
