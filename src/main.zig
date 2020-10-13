@@ -54,16 +54,39 @@ const Loader = struct {
 
     fn loader(self: *js.JsModuleLoader, ctx: *js.JsContext, name: [*:0]const u8) ?*js.JsModuleDef {
         const E = js.JsCFunctionListEntry;
+        const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
         const cmp = std.cstr.cmp;
         const out = std.io.getStdOut().writer();
         const filename = std.mem.spanZ(name);
-        const file = std.fs.cwd().openFile(filename, .{}) catch return null;
+        const file = std.fs.cwd().openFile(filename, .{}) catch {
+            const errstr = std.fmt.allocPrint0(allocator, "could not load module filename '{}': open failed", .{filename}) catch return null;
+            defer allocator.free(errstr);
+            _ = ctx.throw(.{ .Reference = errstr });
+            return null;
+        };
         defer file.close();
-        const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
-        const data = file.readToEndAllocOptions(allocator, 1024, null, 1, 0) catch return null;
+        const data = file.readToEndAllocOptions(allocator, 1024 * 1024 * 1024, null, 1, 0) catch {
+            const errstr = std.fmt.allocPrint0(allocator, "could not load module filename '{}': read failed", .{filename}) catch return null;
+            defer allocator.free(errstr);
+            _ = ctx.throw(.{ .Reference = errstr });
+            return null;
+        };
         defer allocator.free(data);
         const value = ctx.eval(data, filename, .{ .module = true, .compile = true });
-        return setModuleMeta(ctx, value, makeUrl(allocator, filename), false) catch null;
+        if (value.getNormTag() == .Exception) {
+            defer value.deinit(ctx);
+            ctx.dumpError();
+            const errstr = std.fmt.allocPrint0(allocator, "eval module '{}' failed", .{filename}) catch return null;
+            defer allocator.free(errstr);
+            _ = ctx.throw(.{ .Reference = errstr });
+            return null;
+        }
+        return setModuleMeta(ctx, value, makeUrl(allocator, filename), false) catch {
+            const errstr = std.fmt.allocPrint0(allocator, "eval module '{}' failed", .{filename}) catch return null;
+            defer allocator.free(errstr);
+            _ = ctx.throw(.{ .Reference = errstr });
+            return null;
+        };
     }
 };
 
