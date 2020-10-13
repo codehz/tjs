@@ -7,10 +7,12 @@ declare module "builtin:c" {
     | "double"
     | "string"
     | "wstring"
-    | "vector";
+    | "vector"
+    | "pointer";
   export type ResultSupportedType =
     | "integer"
-    | "double";
+    | "double"
+    | "pointer";
   export interface BasicRecipeItem {
     arguments: SupportedType[];
     result?: ResultSupportedType;
@@ -20,6 +22,7 @@ declare module "builtin:c" {
     T extends "string" ? string :
     T extends "wstring" ? string :
     T extends "vector" ? ArrayBuffer :
+    T extends "pointer" ? BigInteger :
     T extends void ? void :
     never;
   type MMap<T> = T;
