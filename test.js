@@ -17,8 +17,8 @@ double add(double a, double b) {
   return a + b;
 }
 
-void msgbox(char const *text) {
-  MessageBoxA(NULL, text, "from js", 0);
+void msgbox(wchar_t const *text) {
+  MessageBoxW(NULL, text, L"from js", 0);
 }
 
 struct strvector {
@@ -35,12 +35,12 @@ void lower(struct strvector vec) {
 const obj = compiler.relocate({
   hello: { arguments: ["string"] },
   add: { arguments: ["double", "double"], result: "double" },
-  msgbox: { arguments: ["string"] },
+  msgbox: { arguments: ["wstring"] },
   lower: { arguments: ["vector"] },
 });
 log(obj.hello(import.meta.url));
 log(obj.add(1, 2));
-obj.msgbox(`from ${import.meta.url}`);
+obj.msgbox(`from ${import.meta.url} ❤ UNICODE`);
 const temp = encode("TEST");
 obj.lower(temp);
 log(decode(temp));

@@ -220,11 +220,13 @@ pub const c = opaque {
                 integer,
                 double,
                 string,
+                wstring,
                 vector,
 
                 fn allowAsResult(self: @This()) bool {
                     return switch (self) {
                         .string => false,
+                        .wstring => false,
                         .vector => false,
                         else => true,
                     };
@@ -235,6 +237,7 @@ pub const c = opaque {
                         .integer => "int",
                         .double => "double",
                         .string => "char const *",
+                        .wstring => "wchar_t const *",
                         .vector => "struct $$vector",
                     };
                 }
@@ -244,6 +247,7 @@ pub const c = opaque {
                         .integer => @sizeOf(i32),
                         .double => @sizeOf(f64),
                         .string => @sizeOf(usize),
+                        .wstring => @sizeOf(usize),
                         .vector => @sizeOf(usize) * 2,
                     };
                     return (@divTrunc(raw - 1, @sizeOf(usize)) + 1) * @sizeOf(usize);
@@ -259,7 +263,7 @@ pub const c = opaque {
                             const val = std.mem.bytesToValue(f64, buf[0..8]);
                             return js.JsValue.from(val);
                         },
-                        .string, .vector => @panic("invalid type"),
+                        .string, .wstring, .vector => @panic("invalid type"),
                     }
                 }
             };
@@ -268,6 +272,7 @@ pub const c = opaque {
                 integer: i32,
                 double: f64,
                 string: [:0]const u8,
+                wstring: [:0]const u16,
                 vector: []u8,
 
                 fn fill(comptime input: usize, writer: anytype) !void {
@@ -293,6 +298,10 @@ pub const c = opaque {
                             const bytes = std.mem.toBytes(@ptrToInt(val.ptr));
                             try writer.writeAll(&bytes);
                         },
+                        .wstring => |val| {
+                            const bytes = std.mem.toBytes(@ptrToInt(val.ptr));
+                            try writer.writeAll(&bytes);
+                        },
                         .vector => |val| {
                             var bytes = std.mem.toBytes(@ptrToInt(val.ptr));
                             try writer.writeAll(&bytes);
@@ -307,6 +316,12 @@ pub const c = opaque {
                         .integer => .{ .integer = try src.as(i32, ctx) },
                         .double => .{ .double = try src.as(f64, ctx) },
                         .string => .{ .string = try (try src.as(js.JsString, ctx)).dupe(ctx, allocator) },
+                        .wstring => blk: {
+                            const rstr = try src.as(js.JsString, ctx);
+                            defer rstr.deinit(ctx);
+                            const r = try std.unicode.utf8ToUtf16LeWithNull(allocator, rstr.data);
+                            break :blk .{ .wstring = r };
+                        },
                         .vector => .{ .vector = try src.as([]u8, ctx) }
                     };
                 }
@@ -314,6 +329,7 @@ pub const c = opaque {
                 fn deinit(self: @This(), allocator: *std.mem.Allocator) void {
                     switch (self) {
                         .string => |str| allocator.free(str),
+                        .wstring => |str| allocator.free(str),
                         else => {},
                     }
                 }
