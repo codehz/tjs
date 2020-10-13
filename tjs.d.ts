@@ -53,3 +53,8 @@ declare module "builtin:utf8" {
   export function encode(string: string): ArrayBuffer;
   export function decode(buffer: ArrayBuffer): string;
 }
+
+declare module "builtin:utf16" {
+  export function encode(string: string): ArrayBuffer;
+  export function decode(buffer: ArrayBuffer): string;
+}
