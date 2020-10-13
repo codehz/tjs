@@ -46,12 +46,11 @@ jobs:
           repository: electron/rcedit
           latest: true
           fileName: rcedit-x64.exe
-          out-file-path: ${{ runner.temp }}/bin/rcedit.exe
+          out-file-path: ${{ runner.tool_cache }}/rcedit/rcedit.exe
       - name: Setup rcedit
-        run: echo "${{ runner.temp }}\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        run: echo "${{ runner.tool_cache }}\rcedit" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build on windows
         run: |
-          echo $env:GITHUB_PATH
           echo $env:PATH
           zig build -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
           zig build bootstrap -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
