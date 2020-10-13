@@ -194,18 +194,23 @@ pub fn build(b: *Builder) !void {
 
     const tcc = b.addExecutable("tcc", null);
     tcc.linkLibC();
+    tcc.defineCMacro("ONE_SOURCE=0");
     tcc.addObject(tccobj);
     tcc.addIncludeDir("tmp");
-    tcc.addCSourceFile("vendor/tinycc/tcc.c", &[_][]const u8{ "-Wno-everything", "-DONE_SOURCE=0" });
+    tcc.addCSourceFile("vendor/tinycc/tcc.c", &[_][]const u8{ "-Wno-everything" });
     tcc.setTarget(target);
     tcc.setBuildMode(mode);
 
     const quickjs = b.addStaticLibrary("quickjs", null);
     quickjs.linkLibC();
-    quickjs.addCSourceFile("vendor/quickjs/quickjs.c", &[_][]const u8{ "-Wno-everything", "-DEMSCRIPTEN", "-DCONFIG_VERSION=\"unknown\"" });
-    quickjs.addCSourceFile("vendor/quickjs/libregexp.c", &[_][]const u8{ "-Wno-everything", "-DEMSCRIPTEN", "-DCONFIG_VERSION=\"unknown\"" });
-    quickjs.addCSourceFile("vendor/quickjs/libunicode.c", &[_][]const u8{ "-Wno-everything", "-DEMSCRIPTEN", "-DCONFIG_VERSION=\"unknown\"" });
-    quickjs.addCSourceFile("vendor/quickjs/cutils.c", &[_][]const u8{ "-Wno-everything", "-DEMSCRIPTEN", "-DCONFIG_VERSION=\"unknown\"" });
+    quickjs.defineCMacro("EMSCRIPTEN");
+    quickjs.defineCMacro("CONFIG_BIGNUM");
+    quickjs.defineCMacro("CONFIG_VERSION=\"unknown\"");
+    quickjs.addCSourceFile("vendor/quickjs/quickjs.c", &[_][]const u8{ "-Wno-everything" });
+    quickjs.addCSourceFile("vendor/quickjs/libregexp.c", &[_][]const u8{ "-Wno-everything" });
+    quickjs.addCSourceFile("vendor/quickjs/libunicode.c", &[_][]const u8{ "-Wno-everything" });
+    quickjs.addCSourceFile("vendor/quickjs/cutils.c", &[_][]const u8{ "-Wno-everything" });
+    quickjs.addCSourceFile("vendor/quickjs/libbf.c", &[_][]const u8{ "-Wno-everything" });
     quickjs.setTarget(target);
     quickjs.setBuildMode(mode);
     quickjs.install();

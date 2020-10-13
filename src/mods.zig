@@ -7,6 +7,11 @@ fn cTagName(comptime tag: anytype) [*:0]const u8 {
     return std.meta.tagName(tag) ++ "";
 }
 
+fn safeIntCast(comptime T: type, val: anytype) ?T {
+    if (val >= std.math.minInt(T) and val <= std.math.maxInt(T)) return @intCast(T, val);
+    return null;
+}
+
 pub const c = opaque {
     const target = std.builtin.Target.current;
     var length_atom: js.JsAtom = .invalid;
@@ -221,6 +226,7 @@ pub const c = opaque {
                 string,
                 wstring,
                 vector,
+                pointer,
 
                 fn allowAsResult(self: @This()) bool {
                     return switch (self) {
@@ -238,6 +244,7 @@ pub const c = opaque {
                         .string => "char const *",
                         .wstring => "wchar_t const *",
                         .vector => "struct $$vector",
+                        .pointer => "void *",
                     };
                 }
 
@@ -248,6 +255,7 @@ pub const c = opaque {
                         .string => @sizeOf(usize),
                         .wstring => @sizeOf(usize),
                         .vector => @sizeOf(usize) * 2,
+                        .pointer => @sizeOf(usize),
                     };
                     return (@divTrunc(raw - 1, @sizeOf(usize)) + 1) * @sizeOf(usize);
                 }
@@ -262,6 +270,10 @@ pub const c = opaque {
                             const val = std.mem.bytesToValue(f64, buf[0..8]);
                             return js.JsValue.from(val);
                         },
+                        .pointer => {
+                            const val = std.mem.bytesToValue(isize, buf[0..@sizeOf(usize)]);
+                            return js.JsValue.fromBig(ctx, val);
+                        },
                         .string, .wstring, .vector => @panic("invalid type"),
                     }
                 }
@@ -273,6 +285,7 @@ pub const c = opaque {
                 string: [:0]const u8,
                 wstring: [:0]const u16,
                 vector: []u8,
+                pointer: usize,
 
                 fn fill(comptime input: usize, writer: anytype) !void {
                     const size = @mod(input, @sizeOf(usize));
@@ -307,6 +320,10 @@ pub const c = opaque {
                             bytes = std.mem.toBytes(val.len);
                             try writer.writeAll(&bytes);
                         },
+                        .pointer => |val| {
+                            const bytes = std.mem.toBytes(val);
+                            try writer.writeAll(&bytes);
+                        },
                     }
                 }
 
@@ -322,6 +339,7 @@ pub const c = opaque {
                             break :blk .{ .wstring = r };
                         },
                         .vector => .{ .vector = try src.as([]u8, ctx) },
+                        .pointer => .{ .pointer = @bitCast(usize, safeIntCast(isize, try src.as(i64, ctx)) orelse return error.InvalidPointer) },
                     };
                 }
 

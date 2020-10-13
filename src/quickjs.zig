@@ -634,6 +634,8 @@ pub const JsValue = extern struct {
         return switch (@TypeOf(val)) {
             i64 => JS_NewBigInt64(ctx, val),
             u64 => JS_NewBigUint64(ctx, val),
+            isize => JS_NewBigInt64(ctx, @intCast(i64, val)),
+            usize => JS_NewBigUint64(ctx, @intCast(u64, val)),
             else => @compileError("unsupported type: " ++ @typeName(@TypeOf(val))),
         };
     }
@@ -681,13 +683,13 @@ pub const JsValue = extern struct {
             },
             u32 => {
                 var res: i32 = undefined;
-                const r = JS_ToInt64(ctx, &res, self);
+                const r = JS_ToInt64Ext(ctx, &res, self);
                 if (r == -1) return error.FailedToConvert;
                 return @intCast(u32, res);
             },
             i64 => {
                 var res: i64 = undefined;
-                const r = JS_ToInt64(ctx, &res, self);
+                const r = JS_ToInt64Ext(ctx, &res, self);
                 if (r == -1) return error.FailedToConvert;
                 return res;
             },
