@@ -593,10 +593,23 @@ pub const utf16 = opaque {
         if (argc != 1) return ctx.throw(.{ .Type = "require 1 args" });
         const buffer: []u8 = argv[0].as([]u8, ctx) catch return ctx.throw(.{ .Type = "not an ArrayBuffer" });
         if (buffer.len % 2 != 0) return ctx.throw(.{ .Type = "invalid utf16" });
+        if (buffer.len == 0) return js.JsValue.init(ctx, .{ .String = "" });
         const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
-        const ret = std.unicode.utf16leToUtf8Alloc(allocator, std.mem.bytesAsSlice([]const u16, buffer)) catch return ctx.throw(.OutOfMemory);
-        defer allocator.free(ret);
-        return js.JsValue.init(ctx, .{ .String = ret });
+        const addr = @ptrToInt(buffer.ptr);
+        if (std.mem.isAligned(addr, @alignOf(*u16))) {
+            const temp = @intToPtr([*]u16, addr)[0..@divExact(buffer.len, @sizeOf(u16))];
+            const ret = std.unicode.utf16leToUtf8Alloc(allocator, temp) catch return ctx.throw(.OutOfMemory);
+            defer allocator.free(ret);
+            return js.JsValue.init(ctx, .{ .String = ret });
+        } else {
+            const aligned = allocator.allocAdvanced(u8, @alignOf(*u16), buffer.len, .at_least) catch return ctx.throw(.OutOfMemory);
+            defer allocator.free(aligned);
+            std.mem.copy(u8, aligned[0..], buffer[0..]);
+            const temp = @ptrCast([*]u16, aligned.ptr)[0..@divExact(aligned.len, @sizeOf(u16))];
+            const ret = std.unicode.utf16leToUtf8Alloc(allocator, temp) catch return ctx.throw(.OutOfMemory);
+            defer allocator.free(ret);
+            return js.JsValue.init(ctx, .{ .String = ret });
+        }
     }
 
     pub const storage = [_]E{
