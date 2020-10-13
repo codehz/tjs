@@ -5,14 +5,19 @@ declare module "builtin:c" {
   export type SupportedType =
     | "integer"
     | "double"
-    | "string";
+    | "string"
+    | "vector";
+  export type ResultSupportedType =
+    | "integer"
+    | "double";
   export interface BasicRecipeItem {
     arguments: SupportedType[];
-    result?: SupportedType;
+    result?: ResultSupportedType;
   }
   type TypeMap<T extends SupportedType | void> =
     T extends "integer" | "double" ? number :
     T extends "string" ? string :
+    T extends "vector" ? ArrayBuffer :
     T extends void ? void :
     never;
   type MMap<T> = T;
@@ -40,4 +45,9 @@ declare module "builtin:c" {
 declare module "builtin:io" {
   export function log(...args: any[]): void;
   export function err(...args: any[]): void;
+}
+
+declare module "builtin:utf8" {
+  export function encode(string: string): ArrayBuffer;
+  export function decode(buffer: ArrayBuffer): string;
 }
