@@ -15,6 +15,7 @@ fn safeIntCast(comptime T: type, val: anytype) ?T {
 pub const c = opaque {
     const target = std.builtin.Target.current;
     var length_atom: js.JsAtom = .invalid;
+    threadlocal var currentContext: *js.JsContext = undefined;
 
     const FunctionProxy = struct {
         const name = @typeName(@This());
@@ -184,10 +185,7 @@ pub const c = opaque {
                 }
                 var cbuffer: std.fifo.LinearFifo(u8, .Dynamic) = std.fifo.LinearFifo(u8, .Dynamic).init(allocator);
                 const out = cbuffer.writer();
-                out.writeAll(
-                    \\#include <stdint.h>
-                    \\struct $$vector { void *ptr; size_t len; };
-                    ++ "\n\n") catch return ctx.throw(.OutOfMemory);
+                out.writeAll("#include <tjs.h>\n\n") catch return ctx.throw(.OutOfMemory);
                 for (names) |item| {
                     const value = obj.getProperty(ctx, item.atom) orelse continue;
                     const str = item.atom.toCString(ctx).?.dupe(ctx, allocator) catch return ctx.throw(.OutOfMemory);
@@ -227,12 +225,14 @@ pub const c = opaque {
                 wstring,
                 vector,
                 pointer,
+                callback,
 
                 fn allowAsResult(self: @This()) bool {
                     return switch (self) {
                         .string => false,
                         .wstring => false,
                         .vector => false,
+                        .callback => false,
                         else => true,
                     };
                 }
@@ -243,8 +243,9 @@ pub const c = opaque {
                         .double => "double",
                         .string => "char const *",
                         .wstring => "wchar_t const *",
-                        .vector => "struct $$vector",
+                        .vector => "tjsvec_buf",
                         .pointer => "void *",
+                        .callback => "tjscallback",
                     };
                 }
 
@@ -256,6 +257,7 @@ pub const c = opaque {
                         .wstring => @sizeOf(usize),
                         .vector => @sizeOf(usize) * 2,
                         .pointer => @sizeOf(usize),
+                        .callback => @sizeOf(usize) * 3,
                     };
                     return (@divTrunc(raw - 1, @sizeOf(usize)) + 1) * @sizeOf(usize);
                 }
@@ -274,7 +276,7 @@ pub const c = opaque {
                             const val = std.mem.bytesToValue(isize, buf[0..@sizeOf(usize)]);
                             return js.JsValue.fromBig(ctx, val);
                         },
-                        .string, .wstring, .vector => @panic("invalid type"),
+                        .string, .wstring, .vector, .callback => @panic("invalid type"),
                     }
                 }
             };
@@ -286,6 +288,7 @@ pub const c = opaque {
                 wstring: [:0]const u16,
                 vector: []u8,
                 pointer: usize,
+                callback: js.JsValue,
 
                 fn fill(comptime input: usize, writer: anytype) !void {
                     const size = @mod(input, @sizeOf(usize));
@@ -324,6 +327,10 @@ pub const c = opaque {
                             const bytes = std.mem.toBytes(val);
                             try writer.writeAll(&bytes);
                         },
+                        .callback => |val| {
+                            const bytes = std.mem.toBytes(val);
+                            try writer.writeAll(&bytes);
+                        },
                     }
                 }
 
@@ -340,6 +347,7 @@ pub const c = opaque {
                         },
                         .vector => .{ .vector = try src.as([]u8, ctx) },
                         .pointer => .{ .pointer = @bitCast(usize, safeIntCast(isize, try src.as(i64, ctx)) orelse return error.InvalidPointer) },
+                        .callback => .{ .callback = src },
                     };
                 }
 
@@ -458,11 +466,27 @@ pub const c = opaque {
             return ret;
         }
 
+        fn notifyCallback(val: js.JsValue) callconv(.C) bool {
+            const ret = val.call(currentContext, js.JsValue.fromRaw(.Undefined), &[_]js.JsValue{});
+            if (ret.getNormTag() != .Exception) return true;
+            currentContext.dumpError();
+            return false;
+        }
+
         fn newInternal(ot: cc.OutputType) !*TinyCC {
             const tcc = try TinyCC.init();
             errdefer tcc.deinit();
             try tcc.setup();
             try tcc.apply(.{ .output = ot });
+            if (ot == .memory) {
+                try tcc.apply(.{ .define = .{ .name = "__TJS_MEMORY__" } });
+                try tcc.apply(.{
+                    .bind = .{
+                        .name = "tjs_notify",
+                        .value = notifyCallback,
+                    },
+                });
+            }
             return tcc;
         }
 
@@ -516,6 +540,7 @@ pub const c = opaque {
 
     pub fn init(ctx: *js.JsContext, mod: *js.JsModuleDef) !void {
         length_atom = js.JsAtom.initAtom(ctx, "length");
+        currentContext = ctx;
         try Compiler.init(ctx, mod);
         try FunctionProxy.init(ctx, mod);
     }

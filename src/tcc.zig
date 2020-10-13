@@ -58,7 +58,7 @@ pub const Config = union(enum) {
     output: OutputType,
     define: struct {
         name: [*:0]const u8,
-        value: ?[*:0]const u8,
+        value: ?[*:0]const u8 = null,
     },
     undefine: [*:0]const u8,
     bind: struct {
@@ -130,6 +130,7 @@ pub const TinyCC = opaque {
                 .value = comptime std.fmt.comptimePrint("__attribute__((aligned({})))", .{@sizeOf(usize)}),
             },
         });
+        try self.apply(.{ .define = .{ .name = "__TJS__" } });
     }
 
     pub fn run(self: *@This(), args: []const [*:0]const u8) c_int {

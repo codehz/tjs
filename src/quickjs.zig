@@ -202,7 +202,7 @@ pub const JsAtom = extern enum(u32) {
 
     pub fn comptimeAtom(ctx: *JsContext, comptime name: []const u8) @This() {
         const Storage = opaque {
-            var atom: JsAtom = .invalid;
+            threadlocal var atom: JsAtom = .invalid;
         };
         if (Storage.atom == .invalid) Storage.atom = initAtom(ctx, name);
         return Storage.atom;
@@ -805,15 +805,15 @@ pub const JsValue = extern struct {
         return desc;
     }
 
-    pub fn call(self: @This(), ctx: *JsContext, this: @This(), args: []@This()) @This() {
+    pub fn call(self: @This(), ctx: *JsContext, this: @This(), args: []const @This()) @This() {
         return JS_Call(ctx, self, this, @intCast(c_int, args.len), args.ptr);
     }
 
-    pub fn invoke(self: @This(), ctx: *JsContext, key: JsAtom, this: @This(), args: []@This()) @This() {
+    pub fn invoke(self: @This(), ctx: *JsContext, key: JsAtom, this: @This(), args: []const @This()) @This() {
         return JS_Call(ctx, self, key, this, @intCast(c_int, args.len), args.ptr);
     }
 
-    pub fn construct(self: @This(), ctx: *JsContext, args: []@This()) @This() {
+    pub fn construct(self: @This(), ctx: *JsContext, args: []const @This()) @This() {
         return JS_CallConstructor(ctx, self, @intCast(c_int, args.len), args.ptr);
     }
 
@@ -944,10 +944,10 @@ extern fn JS_SetPrototype(ctx: *JsContext, obj: JsValue, proto_val: JsValue) c_i
 extern fn JS_GetPrototype(ctx: *JsContext, val: JsValue) JsValue;
 extern fn JS_GetOwnPropertyNames(ctx: *JsContext, ptab: *[*]JsPropertyEnum, plen: *u32, obj: JsValue, flags: c_int) c_int;
 extern fn JS_GetOwnProperty(ctx: *JsContext, desc: *JsPropertyDescriptor, obj: JsValue, prop: JsAtom) c_int;
-extern fn JS_Call(ctx: *JsContext, func_obj: JsValue, this_obj: JsValue, argc: c_int, argv: [*]JsValue) JsValue;
-extern fn JS_Invoke(ctx: *JsContext, this_val: JsValue, atom: JsAtom, argc: c_int, argv: [*]JsValue) JsValue;
-extern fn JS_CallConstructor(ctx: *JsContext, func_obj: JsValue, argc: c_int, argv: [*]JsValue) JsValue;
-extern fn JS_CallConstructor2(ctx: *JsContext, func_obj: JsValue, new_target: JsValue, argc: c_int, argv: [*]JsValue) JsValue;
+extern fn JS_Call(ctx: *JsContext, func_obj: JsValue, this_obj: JsValue, argc: c_int, argv: [*]const JsValue) JsValue;
+extern fn JS_Invoke(ctx: *JsContext, this_val: JsValue, atom: JsAtom, argc: c_int, argv: [*]const JsValue) JsValue;
+extern fn JS_CallConstructor(ctx: *JsContext, func_obj: JsValue, argc: c_int, argv: [*]const JsValue) JsValue;
+extern fn JS_CallConstructor2(ctx: *JsContext, func_obj: JsValue, new_target: JsValue, argc: c_int, argv: [*]const JsValue) JsValue;
 extern fn JS_DetectModule(input: [*:0]const u8, input_len: usize) c_int;
 extern fn JS_Eval(ctx: *JsContext, input: [*:0]const u8, input_len: usize, filename: [*:0]const u8, eval_flags: c_int) JsValue;
 extern fn JS_EvalFunction(ctx: *JsContext, fun_obj: JsValue) JsValue;

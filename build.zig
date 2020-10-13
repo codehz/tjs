@@ -90,6 +90,7 @@ const Tcc1Info = struct {
             .install_dir = .Bin,
             .install_subdir = "include",
         }).step);
+        r.dependOn(&b.addInstallBinFile("src/tjs.h", "include/tjs.h").step);
         if (self.global_incs) |list| for (list) |inc| {
             r.dependOn(&b.addInstallDirectory(.{
                 .source_dir = try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{}", .{inc}),

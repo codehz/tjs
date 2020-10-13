@@ -8,7 +8,8 @@ declare module "builtin:c" {
     | "string"
     | "wstring"
     | "vector"
-    | "pointer";
+    | "pointer"
+    | "callback";
   export type ResultSupportedType =
     | "integer"
     | "double"
@@ -23,6 +24,7 @@ declare module "builtin:c" {
     T extends "wstring" ? string :
     T extends "vector" ? ArrayBuffer :
     T extends "pointer" ? BigInteger :
+    T extends "callback" ? () => void :
     T extends void ? void :
     never;
   type MMap<T> = T;
