@@ -46,9 +46,11 @@ jobs:
           repository: electron/rcedit
           latest: true
           fileName: rcedit-x64.exe
-          out-file-path: ${{ runner.tool_cache }}/rcedit/rcedit.exe
+          out-file-path: ${{ runner.tool_cache }}/rcedit
       - name: Setup rcedit
-        run: echo "${{ runner.tool_cache }}\rcedit" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        run: |
+          Rename-Item ${{ runner.tool_cache }}\rcedit\rcedit-x64.exe ${{ runner.tool_cache }}\rcedit\rcedit.exe
+          echo "${{ runner.tool_cache }}\rcedit" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build on windows
         run: |
           Get-Command rcedit
