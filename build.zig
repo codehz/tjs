@@ -176,6 +176,7 @@ fn bootstrap(b: *Builder, tcc: *std.build.LibExeObjStep, target: std.zig.CrossTa
 
 pub fn build(b: *Builder) !void {
     const target = b.standardTargetOptions(.{});
+    const native = try std.zig.system.NativeTargetInfo.detect(b.allocator, target);
     const mode = b.standardReleaseOptions();
 
     const sqlite3 = b.addObject("sqlite3", null);
@@ -216,6 +217,13 @@ pub fn build(b: *Builder) !void {
     exe.setTarget(target);
     exe.setBuildMode(mode);
     exe.install();
+
+    if (native.target.os.tag == .windows) {
+        const rcedit = b.addSystemCommand(&[_][]const u8{"rcedit"});
+        rcedit.addArtifactArg(exe.install_step.?.artifact);
+        rcedit.addArgs(&[_][]const u8{ "--application-manifest", "src/app.manifest" });
+        exe.install_step.?.step.dependOn(&rcedit.step);
+    }
 
     const tcc1 = try bootstrap(b, tcc, target);
 
