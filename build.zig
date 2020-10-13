@@ -43,16 +43,18 @@ const Tcc1Info = struct {
             try args.append("vendor/tinycc/include");
             try args.append("-I");
             try args.append("tmp");
-            try args.append("-I");
-            try args.append(try resolve(b.allocator, &[_][]const u8{
-                lib_path,
-                "libc/include/generic-musl",
-            }));
-            try args.append("-I");
-            try args.append(try resolve(b.allocator, &[_][]const u8{
-                lib_path,
-                tripletinc,
-            }));
+            if (tgt.os.tag != .windows) {
+                try args.append("-I");
+                try args.append(try resolve(b.allocator, &[_][]const u8{
+                    lib_path,
+                    "libc/include/generic-musl",
+                }));
+                try args.append("-I");
+                try args.append(try resolve(b.allocator, &[_][]const u8{
+                    lib_path,
+                    tripletinc,
+                }));
+            }
             if (self.global_incs) |list| for (list) |inc| {
                 try args.append("-I");
                 try args.append(try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{}", .{inc}));
