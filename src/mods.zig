@@ -179,6 +179,11 @@ pub const c = opaque {
                 }
                 var cbuffer: std.fifo.LinearFifo(u8, .Dynamic) = std.fifo.LinearFifo(u8, .Dynamic).init(allocator);
                 const out = cbuffer.writer();
+                out.writeAll(
+                    \\#include <stdint.h>
+                    \\struct $$vector { void *ptr; size_t len; };
+                    ++ "\n\n"
+                ) catch return ctx.throw(.OutOfMemory);
                 for (names) |item| {
                     const value = obj.getProperty(ctx, item.atom) orelse continue;
                     const str = item.atom.toCString(ctx).?.dupe(ctx, allocator) catch return ctx.throw(.OutOfMemory);
@@ -215,12 +220,22 @@ pub const c = opaque {
                 integer,
                 double,
                 string,
+                vector,
+
+                fn allowAsResult(self: @This()) bool {
+                    return switch (self) {
+                        .string => false,
+                        .vector => false,
+                        else => true,
+                    };
+                }
 
                 fn gen(self: @This()) [:0]const u8 {
                     return switch (self) {
                         .integer => "int",
                         .double => "double",
-                        .string => "char *",
+                        .string => "char const *",
+                        .vector => "struct $$vector",
                     };
                 }
 
@@ -229,6 +244,7 @@ pub const c = opaque {
                         .integer => @sizeOf(i32),
                         .double => @sizeOf(f64),
                         .string => @sizeOf(usize),
+                        .vector => @sizeOf(usize) * 2,
                     };
                     return (@divTrunc(raw - 1, @sizeOf(usize)) + 1) * @sizeOf(usize);
                 }
@@ -243,10 +259,7 @@ pub const c = opaque {
                             const val = std.mem.bytesToValue(f64, buf[0..8]);
                             return js.JsValue.from(val);
                         },
-                        .string => {
-                            const val = std.mem.bytesToValue([*:0]const u8, buf[0..@sizeOf(usize)]);
-                            return js.JsValue.init(ctx, .{ .String = std.mem.span(val) });
-                        },
+                        .string, .vector => @panic("invalid type"),
                     }
                 }
             };
@@ -255,6 +268,7 @@ pub const c = opaque {
                 integer: i32,
                 double: f64,
                 string: [:0]const u8,
+                vector: []u8,
 
                 fn fill(comptime input: usize, writer: anytype) !void {
                     const size = @mod(input, @sizeOf(usize));
@@ -279,6 +293,12 @@ pub const c = opaque {
                             const bytes = std.mem.toBytes(@ptrToInt(val.ptr));
                             try writer.writeAll(&bytes);
                         },
+                        .vector => |val| {
+                            var bytes = std.mem.toBytes(@ptrToInt(val.ptr));
+                            try writer.writeAll(&bytes);
+                            bytes = std.mem.toBytes(val.len);
+                            try writer.writeAll(&bytes);
+                        },
                     }
                 }
 
@@ -287,6 +307,7 @@ pub const c = opaque {
                         .integer => .{ .integer = try src.as(i32, ctx) },
                         .double => .{ .double = try src.as(f64, ctx) },
                         .string => .{ .string = try (try src.as(js.JsString, ctx)).dupe(ctx, allocator) },
+                        .vector => .{ .vector = try src.as([]u8, ctx) }
                     };
                 }
 
@@ -313,6 +334,7 @@ pub const c = opaque {
                 try writer.writeAll(");\n");
                 try writer.print("struct pack${} {{\n", .{self.name});
                 if (self.result) |result| {
+                    if (!result.allowAsResult()) return error.ResultTypeNotAllowed;
                     try writer.print("\t{} result __ALIGN__;\n", .{result.gen()});
                 }
                 for (self.arguments) |arg, i| {
@@ -497,5 +519,24 @@ pub const io = opaque {
     pub const storage = [_]E{
         E.genFunction("log", .{ .length = 1, .func = .{ .generic = printOut } }),
         E.genFunction("err", .{ .length = 1, .func = .{ .generic = printErr } }),
+    };
+};
+
+pub const utf8 = opaque {
+    fn encode(ctx: *js.JsContext, this: js.JsValue, argc: c_int, argv: [*]js.JsValue) callconv(.C) js.JsValue {
+        if (argc != 1) return ctx.throw(.{ .Type = "require 1 args" });
+        const str: js.JsString = argv[0].as(js.JsString, ctx) catch return ctx.throw(.{ .Type = "not a string" });
+        defer str.deinit(ctx);
+        return js.JsValue.init(ctx, .{ .ArrayBuffer = str.data });
+    }
+    fn decode(ctx: *js.JsContext, this: js.JsValue, argc: c_int, argv: [*]js.JsValue) callconv(.C) js.JsValue {
+        if (argc != 1) return ctx.throw(.{ .Type = "require 1 args" });
+        const buffer = argv[0].as([]u8, ctx) catch return ctx.throw(.{ .Type = "not an ArrayBuffer" });
+        return js.JsValue.init(ctx, .{ .String = buffer });
+    }
+
+    pub const storage = [_]E{
+        E.genFunction("encode", .{ .length = 1, .func = .{ .generic = encode } }),
+        E.genFunction("decode", .{ .length = 1, .func = .{ .generic = decode } }),
     };
 };

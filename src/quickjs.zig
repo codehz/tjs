@@ -705,6 +705,11 @@ pub const JsValue = extern struct {
                 const r = JS_ToCStringLen2(ctx, &len, self, 0) orelse return error.FailedToConvert;
                 return T{ .data = r[0..len :0] };
             },
+            []u8 => {
+                var len: usize = undefined;
+                const r = JS_GetArrayBuffer(ctx, &len, self) orelse return error.FailedToConvert;
+                return r[0..len];
+            },
             else => @compileError("unsupported type: " ++ @typeName(T)),
         }
     }
@@ -900,6 +905,8 @@ extern fn JS_ToString(ctx: *JsContext, val: JsValue) JsValue;
 extern fn JS_ToPropertyKey(ctx: *JsContext, val: JsValue) JsValue;
 extern fn JS_ToCStringLen2(ctx: *JsContext, plen: *usize, val1: JsValue, cesu8: c_int) ?[*]const u8;
 extern fn JS_FreeCString(ctx: *JsContext, ptr: [*]const u8) void;
+
+extern fn JS_GetArrayBuffer(ctx: *JsContext, size: *usize, obj: JsValue) ?[*]u8;
 
 extern fn JS_NewObjectProtoClass(ctx: *JsContext, proto: JsValue, class_id: JsClassID) JsValue;
 extern fn JS_NewObjectClass(ctx: *JsContext, class_id: JsClassID) JsValue;
