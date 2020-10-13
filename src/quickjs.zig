@@ -139,16 +139,25 @@ pub const JsContext = opaque {
         return JS_GetGlobalObject(self);
     }
 
+    fn dumpObject(self: *@This(), out: anytype, ex: JsValue) void {
+        const str = ex.as(JsString, self) catch return;
+        defer str.deinit(self);
+        out.print("{}\n", .{str.data}) catch {};
+    }
+
+    fn dumpException(self: *@This(), ex: JsValue) void {
+        const writer = std.io.getStdErr().writer();
+        self.dumpObject(writer, ex);
+        if (ex.getProperty(self, JsAtom.comptimeAtom(self, "stack"))) |stack| {
+            defer stack.deinit(self);
+            self.dumpObject(writer, stack);
+        }
+    }
+
     pub fn dumpError(self: *@This()) void {
         const ex = self.getException();
         defer ex.deinit(self);
-        if (ex.getNormTag() != .Exception) return;
-        if (ex.getProperty(self, JsAtom.comptimeAtom(self, "stack"))) |stack| {
-            defer stack.deinit(self);
-            const str = stack.as(JsString, self) catch return;
-            defer str.deinit(self);
-            std.log.err("{}", .{str.data});
-        }
+        self.dumpException(ex);
     }
 
     pub fn setConstructor(self: *@This(), func: JsValue, proto: JsValue) void {
