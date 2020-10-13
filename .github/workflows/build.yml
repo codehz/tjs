@@ -51,6 +51,8 @@ jobs:
         run: echo "${{ runner.temp }}\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build on windows
         run: |
+          echo $env:GITHUB_PATH
+          echo $env:PATH
           zig build -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
           zig build bootstrap -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
       - uses: actions/upload-artifact@v2
