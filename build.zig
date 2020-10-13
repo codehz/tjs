@@ -181,12 +181,16 @@ pub fn build(b: *Builder) !void {
     const mode = b.standardReleaseOptions();
 
     const sqlite3 = b.addObject("sqlite3", null);
+    sqlite3.disable_sanitize_c = true;
+    sqlite3.disable_stack_probing = true;
     sqlite3.linkLibC();
     sqlite3.addCSourceFile("vendor/sqlite3/sqlite3.c", &[_][]const u8{"-Wno-everything"});
     sqlite3.setTarget(target);
     sqlite3.setBuildMode(mode);
 
     const tccobj = b.addObject("tccobj", null);
+    tccobj.disable_sanitize_c = true;
+    tccobj.disable_stack_probing = true;
     tccobj.linkLibC();
     tccobj.addIncludeDir("tmp");
     tccobj.addCSourceFile("vendor/tinycc/libtcc.c", &[_][]const u8{"-Wno-everything"});
@@ -194,24 +198,28 @@ pub fn build(b: *Builder) !void {
     tccobj.setBuildMode(mode);
 
     const tcc = b.addExecutable("tcc", null);
+    tcc.disable_sanitize_c = true;
+    tcc.disable_stack_probing = true;
     tcc.linkLibC();
     tcc.defineCMacro("ONE_SOURCE=0");
     tcc.addObject(tccobj);
     tcc.addIncludeDir("tmp");
-    tcc.addCSourceFile("vendor/tinycc/tcc.c", &[_][]const u8{ "-Wno-everything" });
+    tcc.addCSourceFile("vendor/tinycc/tcc.c", &[_][]const u8{"-Wno-everything"});
     tcc.setTarget(target);
     tcc.setBuildMode(mode);
 
     const quickjs = b.addStaticLibrary("quickjs", null);
+    quickjs.disable_sanitize_c = true;
+    quickjs.disable_stack_probing = true;
     quickjs.linkLibC();
     quickjs.defineCMacro("EMSCRIPTEN");
     quickjs.defineCMacro("CONFIG_BIGNUM");
     quickjs.defineCMacro("CONFIG_VERSION=\"unknown\"");
-    quickjs.addCSourceFile("vendor/quickjs/quickjs.c", &[_][]const u8{ "-Wno-everything" });
-    quickjs.addCSourceFile("vendor/quickjs/libregexp.c", &[_][]const u8{ "-Wno-everything" });
-    quickjs.addCSourceFile("vendor/quickjs/libunicode.c", &[_][]const u8{ "-Wno-everything" });
-    quickjs.addCSourceFile("vendor/quickjs/cutils.c", &[_][]const u8{ "-Wno-everything" });
-    quickjs.addCSourceFile("vendor/quickjs/libbf.c", &[_][]const u8{ "-Wno-everything" });
+    quickjs.addCSourceFile("vendor/quickjs/quickjs.c", &[_][]const u8{"-Wno-everything"});
+    quickjs.addCSourceFile("vendor/quickjs/libregexp.c", &[_][]const u8{"-Wno-everything"});
+    quickjs.addCSourceFile("vendor/quickjs/libunicode.c", &[_][]const u8{"-Wno-everything"});
+    quickjs.addCSourceFile("vendor/quickjs/cutils.c", &[_][]const u8{"-Wno-everything"});
+    quickjs.addCSourceFile("vendor/quickjs/libbf.c", &[_][]const u8{"-Wno-everything"});
     quickjs.setTarget(target);
     quickjs.setBuildMode(mode);
     quickjs.install();
