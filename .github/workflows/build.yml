@@ -44,6 +44,7 @@ jobs:
         uses: robinraju/release-downloader@v1
         with:
           repository: electron/rcedit
+          latest: true
           fileName: rcedit-x64.exe
           out-file-path: ${{ runner.temp }}/bin/rcedit.exe
       - name: Setup rcedit
