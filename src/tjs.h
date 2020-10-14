@@ -42,22 +42,23 @@ typedef struct __tjscallback_data {
 extern int tjs_notify(tjscallback cb);
 extern int tjs_notify_data(tjscallback cb, size_t num, tjscallback_data const *ptr);
 
-#define TJS_NOTIFY_DATA(cb, list...) ({ \
-    tjscallback_data __tmp_callback_data__[] = { list }; \
-    tjs_notify_data(cb, sizeof(__tmp_callback_data__) / sizeof(tjscallback_data), __tmp_callback_data__); \
-  })
+#define TJS_NOTIFY_DATA(cb, n, list...) tjs_notify_data(cb, n, (tjscallback_data[n]){ list })
 #define TJS_DATA_VOID() (tjscallback_data){ type: 0 }
 #define TJS_DATA_INT(value) (tjscallback_data){ type: 1, i: (value) }
 #define TJS_DATA_DOUBLE(value) (tjscallback_data){ type: 2, d: (value) }
 #define TJS_DATA_STRING(value) (tjscallback_data){ type: 3, s: (value) }
 #define TJS_DATA_WSTRING(value) (tjscallback_data){ type: 4, w: (value) }
-#define TJS_DATA_VECTOR(value_ptr, value_len) (tjscallback_data){ type: 5, v: { ptr: value_ptr, len: value_len } }
+#define TJS_DATA_VECTOR(value) (tjscallback_data){ type: 5, v: { ptr: (void *)value.ptr, len: value.len } }
+#define TJS_DATA_VECTOR2(value_ptr, value_len) (tjscallback_data){ type: 5, v: { ptr: value_ptr, len: value_len } }
 #define TJS_DATA_POINTER(value) (tjscallback_data){ type: 6, p: (value) }
 #define TJS_DATA(value) _Generic((value), \
-    int: TJS_DATA_INT(value),\
-    double: TJS_DATA_DOUBLE(value),\
-    char *: TJS_DATA_STRING(value),\
-    wchar_t *: TJS_DATA_WSTRING(value),\
-    void *: TJS_DATA_POINTER(value)\
+    int: TJS_DATA_INT(value), \
+    double: TJS_DATA_DOUBLE(value), \
+    char *: TJS_DATA_STRING(value), \
+    wchar_t *: TJS_DATA_WSTRING(value), \
+    tjsvec_str: TJS_DATA_VECTOR(value), \
+    tjsvec_wstr: TJS_DATA_VECTOR(value), \
+    tjsvec_buf: TJS_DATA_VECTOR(value), \
+    void *: TJS_DATA_POINTER(value) \
   )
 #endif
