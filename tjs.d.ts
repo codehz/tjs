@@ -1,7 +1,33 @@
 declare module "builtin:c" {
-  export const os: "windows";
-  export const arch: "i386" | "x86_64";
+  export const os: "windows" | "linux";
+  export const arch: "i386" | "x86_64" | "aarch64";
   export const abi: "gnu" | "musl";
+
+  /** The core compiler */
+  export class Compiler {
+    /** Construct compiler, specify output type, only type=memory can be used to run or relocate */
+    constructor(type: "memory" | "exe" | "dll" | "obj" | "preprocessor");
+    /** Check if it is a valid compiler */
+    get valid(): boolean;
+    /** Compile a string containing a C source */
+    compile(code: string): void;
+    /** Add a file (C file, dll, object, library, ld script) */
+    add(file: string): void;
+    /** Link library */
+    link(target: string): void;
+    /** Library search path */
+    linkDir(path: string): void;
+    /** Include search path */
+    include(path: string): void;
+    /** System include search path */
+    sysinclude(path: string): void;
+    /** Output an executable, library or object file. DO NOT call relocate before. */
+    output(path: string): void;
+    /** Link and run main() function and return its value. DO NOT call relocate before. */
+    run(...args: string[]): number;
+    /** Do all relocations and returns relocated symbols */
+    relocate<Recipe extends Record<string, string>>(recipe: Recipe): Relocated<Recipe>;
+  }
 
   type SimpleParameterMapper<T extends string> =
     T extends `` ? [] :
@@ -38,20 +64,6 @@ declare module "builtin:c" {
   export type Relocated<T extends Record<string, string>> = {
     [K in keyof T]: T[K] extends string ? FunctionMapper<T[K]> : never;
   };
-
-  export class Compiler {
-    constructor(type: "memory" | "exe" | "dll" | "obj" | "preprocessor");
-    valid: boolean;
-    compile(code: string): void;
-    compileFile(file: string): void;
-    link(target: string): void;
-    linkDir(path: string): void;
-    include(path: string): void;
-    sysinclude(path: string): void;
-    output(path: string): void;
-    run(...args: string[]): number;
-    relocate<Recipe extends Record<string, string>>(recipe: Recipe): Relocated<Recipe>;
-  }
 }
 
 declare module "builtin:io" {

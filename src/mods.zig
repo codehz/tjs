@@ -88,7 +88,7 @@ pub const c = opaque {
         const template = [_]E{
             E.genGetSet("valid", .{ .get = getIsValid }),
             E.genFunction("compile", .{ .length = 1, .func = .{ .generic_magic = fnInput }, .magic = 0 }),
-            E.genFunction("compileFile", .{ .length = 1, .func = .{ .generic_magic = fnInput }, .magic = 1 }),
+            E.genFunction("add", .{ .length = 1, .func = .{ .generic_magic = fnInput }, .magic = 1 }),
             E.genFunction("link", .{ .length = 1, .func = .{ .generic_magic = fnInput }, .magic = 2 }),
             E.genFunction("linkDir", .{ .length = 1, .func = .{ .generic_magic = fnInput }, .magic = 3 }),
             E.genFunction("include", .{ .length = 1, .func = .{ .generic_magic = fnInput }, .magic = 4 }),
