@@ -542,7 +542,8 @@ pub const c = opaque {
                     .wstring => blk: {
                         const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
                         const ret = std.unicode.utf16leToUtf8Alloc(allocator, std.mem.span(self.value.wstring)) catch @panic("decode utf16 failed");
-                        break :blk js.JsValue.init(ctx, .{ .String = std.mem.span(self.value.string) });
+                        defer allocator.free(ret);
+                        break :blk js.JsValue.init(ctx, .{ .String = ret });
                     },
                     .vector => js.JsValue.init(ctx, .{ .ArrayBuffer = self.value.vector.toSlice() }),
                     .pointer => js.JsValue.fromBig(ctx, self.value.pointer),
