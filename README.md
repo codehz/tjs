@@ -22,7 +22,7 @@ void msgbox(char const *text) {
 `);
 // and relocate the function
 const obj = compiler.relocate({
-  msgbox: { arguments: ["string"] }
+  msgbox: "w"
 });
 obj.msgbox(`from ${import.meta.url}`);
 ```
