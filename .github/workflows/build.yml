@@ -33,7 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x86_64, i386]
-        mode: [ReleaseSafe, ReleaseFast, ReleaseSmall, Debug]
+        mode: [ReleaseFast, ReleaseSmall, Debug]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
