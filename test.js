@@ -26,9 +26,11 @@ void lower(tjsvec_wstr vec) {
     vec.ptr[i] = tolower(vec.ptr[i]);
   }
 }
+
 void callback(tjscallback cb) {
-  tjs_notify(cb);
-  tjs_notify(cb);
+  TJS_NOTIFY_DATA(cb, TJS_DATA_INT(2));
+  TJS_NOTIFY_DATA(cb, TJS_DATA_INT(1));
+  TJS_NOTIFY_DATA(cb, TJS_DATA_INT(3));
 }
 `);
 const obj = compiler.relocate({
@@ -36,7 +38,7 @@ const obj = compiler.relocate({
   add: "dd!d",
   msgbox: "w",
   lower: "v",
-  callback: "[]",
+  callback: "[i]",
 });
 log(obj.hello(import.meta.url));
 log(obj.add(1, 2));
@@ -44,4 +46,4 @@ obj.msgbox(`from ${import.meta.url} ❤ UNICODE`);
 const temp = encode("TEST");
 obj.lower(temp);
 log(decode(temp));
-obj.callback(() => log("cb"));
+obj.callback((i) => log("got ", i));

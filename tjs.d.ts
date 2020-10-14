@@ -5,10 +5,10 @@ declare module "builtin:c" {
 
   type SimpleParameterMapper<T extends string> =
     T extends `` ? [] :
-    T extends `${"i" | "d"}${infer next}` ? [number, ...ParameterMapper<next>] :
-    T extends `${"s" | "w"}${infer next}` ? [string, ...ParameterMapper<next>] :
-    T extends `v${infer next}` ? [ArrayBuffer, ...ParameterMapper<next>] :
-    T extends `p${infer next}` ? [BigInteger, ...ParameterMapper<next>] :
+    T extends `${"i" | "d"}${infer next}` ? [number | void, ...ParameterMapper<next>] :
+    T extends `${"s" | "w"}${infer next}` ? [string | void, ...ParameterMapper<next>] :
+    T extends `v${infer next}` ? [ArrayBuffer | void, ...ParameterMapper<next>] :
+    T extends `p${infer next}` ? [BigInteger | void, ...ParameterMapper<next>] :
     never;
 
   type ParameterMapper<T extends string> =
@@ -27,8 +27,7 @@ declare module "builtin:c" {
     never;
 
   type CallbackFunctionMapper<T extends string> =
-    T extends `${infer args}?${infer res}` ? (...args: SimpleParameterMapper<args>) => ResultMapper<res> :
-    T extends `${infer args}` ? (...args: SimpleParameterMapper<args>) => void : never;
+    T extends `${infer args}` ? (...args: SimpleParameterMapper<args>) => boolean : never;
 
   type FunctionMapper<T extends string> =
     T extends `${infer args}!${infer res}` ? (...args: ParameterMapper<args>) => ResultMapper<res> :

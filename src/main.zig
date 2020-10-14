@@ -49,7 +49,7 @@ const Loader = struct {
     fn normalize(self: *js.JsModuleLoader, ctx: *js.JsContext, base: [*:0]const u8, name: [*:0]const u8) [*:0]const u8 {
         const out = std.io.getStdOut().writer();
         const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
-        return enormalize(allocator, ctx, std.mem.spanZ(base), std.mem.spanZ(name)) catch (allocator.dupeZ(u8, std.mem.spanZ(name)) catch unreachable);
+        return enormalize(allocator, ctx, std.mem.span(base), std.mem.span(name)) catch (allocator.dupeZ(u8, std.mem.span(name)) catch unreachable);
     }
 
     fn loader(self: *js.JsModuleLoader, ctx: *js.JsContext, name: [*:0]const u8) ?*js.JsModuleDef {
@@ -57,7 +57,7 @@ const Loader = struct {
         const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
         const cmp = std.cstr.cmp;
         const out = std.io.getStdOut().writer();
-        const filename = std.mem.spanZ(name);
+        const filename = std.mem.span(name);
         const file = std.fs.cwd().openFile(filename, .{}) catch {
             const errstr = std.fmt.allocPrint0(allocator, "could not load module filename '{}': open failed", .{filename}) catch return null;
             defer allocator.free(errstr);

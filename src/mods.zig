@@ -498,7 +498,68 @@ pub const c = opaque {
 
         fn notifyCallback(val: js.JsValue) callconv(.C) bool {
             const ret = val.call(currentContext, js.JsValue.fromRaw(.Undefined), &[_]js.JsValue{});
-            if (ret.getNormTag() != .Exception) return true;
+            if (ret.getNormTag() != .Exception) return ret.as(bool, currentContext) catch false;
+            currentContext.dumpError();
+            return false;
+        }
+
+        const NotifyData = extern struct {
+            const Tag = extern enum(usize) {
+                unset = 0,
+                integer = 1,
+                double = 2,
+                string = 3,
+                wstring = 4,
+                vector = 5,
+                pointer = 6,
+                _,
+            };
+            const Value = extern union {
+                unset: void,
+                integer: c_int,
+                double: f64,
+                string: [*:0]const u8,
+                wstring: [*:0]const u16,
+                vector: struct {
+                    ptr: [*]u8,
+                    len: usize,
+
+                    fn toSlice(self: @This()) []u8 {
+                        return self.ptr[0..self.len];
+                    }
+                },
+                pointer: usize,
+            };
+            tag: Tag,
+            value: Value,
+
+            fn toJs(self: @This(), ctx: *js.JsContext) js.JsValue {
+                return switch (self.tag) {
+                    .unset => js.JsValue.fromRaw(.Undefined),
+                    .integer => js.JsValue.from(self.value.integer),
+                    .double => js.JsValue.from(self.value.double),
+                    .string => js.JsValue.init(ctx, .{ .String = std.mem.span(self.value.string) }),
+                    .wstring => blk: {
+                        const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
+                        const ret = std.unicode.utf16leToUtf8Alloc(allocator, std.mem.span(self.value.wstring)) catch @panic("decode utf16 failed");
+                        break :blk js.JsValue.init(ctx, .{ .String = std.mem.span(self.value.string) });
+                    },
+                    .vector => js.JsValue.init(ctx, .{ .ArrayBuffer = self.value.vector.toSlice() }),
+                    .pointer => js.JsValue.fromBig(ctx, self.value.pointer),
+                    else => @panic("invalid type"),
+                };
+            }
+        };
+
+        fn notifyCallbackData(val: js.JsValue, num: usize, args: [*]NotifyData) callconv(.C) bool {
+            const allocator = currentContext.getRuntime().getOpaqueT(GlobalContext).?.allocator;
+            const arr = allocator.alloc(js.JsValue, num) catch return false;
+            defer allocator.free(arr);
+            for (arr) |*item| item.* = js.JsValue.fromRaw(.Undefined);
+            defer for (arr) |item| item.deinit(currentContext);
+            for (arr) |*item, i| item.* = args[i].toJs(currentContext);
+            const ret = val.call(currentContext, js.JsValue.fromRaw(.Undefined), arr);
+            if (ret.getNormTag() != .Exception) return ret.as(bool, currentContext) catch false;
             currentContext.dumpError();
             return false;
         }
@@ -514,6 +575,12 @@ pub const c = opaque {
                     .bind = .{
                         .name = "tjs_notify",
                         .value = notifyCallback,
+                    },
+                });
+                try tcc.apply(.{
+                    .bind = .{
+                        .name = "tjs_notify_data",
+                        .value = notifyCallbackData,
                     },
                 });
             }
@@ -665,6 +732,7 @@ pub const utf16 = opaque {
         defer allocator.free(out);
         return js.JsValue.init(ctx, .{ .ArrayBuffer = std.mem.sliceAsBytes(out) });
     }
+
     fn decode(ctx: *js.JsContext, this: js.JsValue, argc: c_int, argv: [*]js.JsValue) callconv(.C) js.JsValue {
         if (argc != 1) return ctx.throw(.{ .Type = "require 1 args" });
         const buffer: []u8 = argv[0].as([]u8, ctx) catch return ctx.throw(.{ .Type = "not an ArrayBuffer" });
