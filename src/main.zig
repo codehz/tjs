@@ -116,6 +116,7 @@ fn tourl(allocator: *std.mem.Allocator, file: []const u8) ![:0]const u8 {
 }
 
 pub fn main() anyerror!void {
+    @import("./workaround.zig").patch();
     const allocator = std.heap.c_allocator;
 
     var args = try std.process.argsAlloc(allocator);
