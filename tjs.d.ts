@@ -8,7 +8,7 @@ declare module "builtin:c" {
     T extends `${"i" | "d"}${infer next}` ? [number, ...ParameterMapper<next>] :
     T extends `${"s" | "w"}${infer next}` ? [string, ...ParameterMapper<next>] :
     T extends `v${infer next}` ? [ArrayBuffer, ...ParameterMapper<next>] :
-    T extends `p${infer next}` ? [BigInteger, ...ParameterMapper<next>] :
+    T extends `${"b" | "p"}${infer next}` ? [BigInteger, ...ParameterMapper<next>] :
     never;
 
   type ParameterMapper<T extends string> =
@@ -16,13 +16,13 @@ declare module "builtin:c" {
     T extends `${"i" | "d"}${infer next}` ? [number, ...ParameterMapper<next>] :
     T extends `${"s" | "w"}${infer next}` ? [string, ...ParameterMapper<next>] :
     T extends `v${infer next}` ? [ArrayBuffer, ...ParameterMapper<next>] :
-    T extends `p${infer next}` ? [BigInteger, ...ParameterMapper<next>] :
+    T extends `${"b" | "p"}${infer next}` ? [BigInteger, ...ParameterMapper<next>] :
     T extends `[${infer part}]${infer next}` ? [CallbackFunctionMapper<part>, ...ParameterMapper<next>] :
     never;
 
   type ResultMapper<T extends string> =
     T extends ("i" | "d") ? number :
-    T extends "p" ? BigInteger :
+    T extends ("b" | "p") ? BigInteger :
     T extends "_" ? void :
     never;
 

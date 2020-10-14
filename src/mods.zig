@@ -224,6 +224,7 @@ pub const c = opaque {
                 string,
                 wstring,
                 vector,
+                bigint,
                 pointer,
                 callback,
 
@@ -244,6 +245,7 @@ pub const c = opaque {
                         .string => "char const *",
                         .wstring => "wchar_t const *",
                         .vector => "tjsvec_buf",
+                        .bigint => "int64_t",
                         .pointer => "void *",
                         .callback => "tjscallback",
                     };
@@ -256,6 +258,7 @@ pub const c = opaque {
                         .string => @sizeOf(usize),
                         .wstring => @sizeOf(usize),
                         .vector => @sizeOf(usize) * 2,
+                        .bigint => @sizeOf(u64),
                         .pointer => @sizeOf(usize),
                         .callback => @sizeOf(usize) * 3,
                     };
@@ -272,7 +275,7 @@ pub const c = opaque {
                             const val = std.mem.bytesToValue(f64, buf[0..8]);
                             return js.JsValue.from(val);
                         },
-                        .pointer => {
+                        .bigint, .pointer => {
                             const val = std.mem.bytesToValue(isize, buf[0..@sizeOf(usize)]);
                             return js.JsValue.fromBig(ctx, val);
                         },
@@ -287,6 +290,7 @@ pub const c = opaque {
                 string: [:0]const u8,
                 wstring: [:0]const u16,
                 vector: []u8,
+                bigint: i64,
                 pointer: usize,
                 callback: js.JsValue,
 
@@ -323,6 +327,10 @@ pub const c = opaque {
                             bytes = std.mem.toBytes(val.len);
                             try writer.writeAll(&bytes);
                         },
+                        .bigint => |val| {
+                            const bytes = std.mem.toBytes(val);
+                            try writer.writeAll(&bytes);
+                        },
                         .pointer => |val| {
                             const bytes = std.mem.toBytes(val);
                             try writer.writeAll(&bytes);
@@ -346,6 +354,7 @@ pub const c = opaque {
                             break :blk .{ .wstring = r };
                         },
                         .vector => .{ .vector = try src.as([]u8, ctx) },
+                        .bigint => .{ .bigint = try src.as(i64, ctx) },
                         .pointer => .{ .pointer = @bitCast(usize, safeIntCast(isize, try src.as(i64, ctx)) orelse return error.InvalidPointer) },
                         .callback => .{ .callback = src.clone() },
                     };
@@ -465,6 +474,7 @@ pub const c = opaque {
                             's' => .string,
                             'w' => .wstring,
                             'v' => .vector,
+                            'b' => .bigint,
                             'p' => .pointer,
                             '[' => .callback,
                             '!' => {
@@ -486,6 +496,7 @@ pub const c = opaque {
                         ret.result = switch (ch) {
                             'i' => .integer,
                             'd' => .double,
+                            'b' => .bigint,
                             'p' => .pointer,
                             '_' => null,
                             else => return error.InvalidResult,
@@ -512,7 +523,8 @@ pub const c = opaque {
                 string = 3,
                 wstring = 4,
                 vector = 5,
-                pointer = 6,
+                bigint = 6,
+                pointer = 7,
                 _,
             };
             const Value = extern union {
@@ -529,6 +541,7 @@ pub const c = opaque {
                         return self.ptr[0..self.len];
                     }
                 },
+                bigint: i64,
                 pointer: usize,
             };
             tag: Tag,
@@ -547,6 +560,7 @@ pub const c = opaque {
                         break :blk js.JsValue.init(ctx, .{ .String = ret });
                     },
                     .vector => js.JsValue.init(ctx, .{ .ArrayBuffer = self.value.vector.toSlice() }),
+                    .bigint => js.JsValue.fromBig(ctx, self.value.bigint),
                     .pointer => js.JsValue.fromBig(ctx, self.value.pointer),
                     else => @panic("invalid type"),
                 };

@@ -30,11 +30,12 @@ typedef struct __tjscallback {
 typedef struct __tjscallback_data {
   size_t type;
   union {
-    int i;
+    int32_t i;
     double d;
     char const *s;
     wchar_t const *w;
     tjsvec_buf v;
+    int64_t b;
     void *p;
   };
 } tjscallback_data;
@@ -50,15 +51,17 @@ extern int tjs_notify_data(tjscallback cb, size_t num, tjscallback_data const *p
 #define TJS_DATA_WSTRING(value) (tjscallback_data){ type: 4, w: (value) }
 #define TJS_DATA_VECTOR(value) (tjscallback_data){ type: 5, v: { ptr: (void *)value.ptr, len: value.len } }
 #define TJS_DATA_VECTOR2(value_ptr, value_len) (tjscallback_data){ type: 5, v: { ptr: value_ptr, len: value_len } }
-#define TJS_DATA_POINTER(value) (tjscallback_data){ type: 6, p: (value) }
+#define TJS_DATA_BIGINT(value) (tjscallback_data){ type: 6, b: (value) }
+#define TJS_DATA_POINTER(value) (tjscallback_data){ type: 7, p: (value) }
 #define TJS_DATA(value) _Generic((value), \
-    int: TJS_DATA_INT(value), \
+    int32_t: TJS_DATA_INT(value), \
     double: TJS_DATA_DOUBLE(value), \
     char *: TJS_DATA_STRING(value), \
     wchar_t *: TJS_DATA_WSTRING(value), \
     tjsvec_str: TJS_DATA_VECTOR(value), \
     tjsvec_wstr: TJS_DATA_VECTOR(value), \
     tjsvec_buf: TJS_DATA_VECTOR(value), \
+    int64_t: TJS_DATA_BIGINT(value), \
     void *: TJS_DATA_POINTER(value) \
   )
 #endif
