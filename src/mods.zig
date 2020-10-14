@@ -347,14 +347,15 @@ pub const c = opaque {
                         },
                         .vector => .{ .vector = try src.as([]u8, ctx) },
                         .pointer => .{ .pointer = @bitCast(usize, safeIntCast(isize, try src.as(i64, ctx)) orelse return error.InvalidPointer) },
-                        .callback => .{ .callback = src },
+                        .callback => .{ .callback = src.clone() },
                     };
                 }
 
-                fn deinit(self: @This(), allocator: *std.mem.Allocator) void {
+                fn deinit(self: @This(), ctx: *js.JsContext, allocator: *std.mem.Allocator) void {
                     switch (self) {
                         .string => |str| allocator.free(str),
                         .wstring => |str| allocator.free(str),
+                        .callback => |cb| cb.deinit(ctx),
                         else => {},
                     }
                 }
@@ -420,14 +421,14 @@ pub const c = opaque {
                 const writer = fifo.writer();
                 var argsdata = std.ArrayListUnmanaged(Data).initCapacity(allocator, args.len) catch return ctx.throw(.OutOfMemory);
                 defer {
-                    for (argsdata.items) |item| item.deinit(allocator);
+                    for (argsdata.items) |item| item.deinit(ctx, allocator);
                     argsdata.deinit(allocator);
                 }
                 if (self.result) |res| fifo.update(res.size());
                 for (self.arguments) |arg, i| {
                     const data = Data.from(arg, args[i], ctx, allocator) catch |e| return ctx.throw(.{ .Type = @errorName(e) });
                     data.dump(writer) catch |e| {
-                        data.deinit(allocator);
+                        data.deinit(ctx, allocator);
                         return ctx.throw(.{ .Internal = @errorName(e) });
                     };
                     argsdata.appendAssumeCapacity(data);
