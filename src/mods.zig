@@ -496,11 +496,11 @@ pub const c = opaque {
             return ret;
         }
 
-        fn notifyCallback(val: js.JsValue) callconv(.C) bool {
+        fn notifyCallback(val: js.JsValue) callconv(.C) c_int {
             const ret = val.call(currentContext, js.JsValue.fromRaw(.Undefined), &[_]js.JsValue{});
-            if (ret.getNormTag() != .Exception) return ret.as(bool, currentContext) catch false;
+            if (ret.getNormTag() != .Exception) return ret.as(i32, currentContext) catch 0;
             currentContext.dumpError();
-            return false;
+            return -1;
         }
 
         const NotifyData = extern struct {
@@ -552,17 +552,17 @@ pub const c = opaque {
             }
         };
 
-        fn notifyCallbackData(val: js.JsValue, num: usize, args: [*]NotifyData) callconv(.C) bool {
+        fn notifyCallbackData(val: js.JsValue, num: usize, args: [*]NotifyData) callconv(.C) i32 {
             const allocator = currentContext.getRuntime().getOpaqueT(GlobalContext).?.allocator;
-            const arr = allocator.alloc(js.JsValue, num) catch return false;
+            const arr = allocator.alloc(js.JsValue, num) catch return -2;
             defer allocator.free(arr);
             for (arr) |*item| item.* = js.JsValue.fromRaw(.Undefined);
             defer for (arr) |item| item.deinit(currentContext);
             for (arr) |*item, i| item.* = args[i].toJs(currentContext);
             const ret = val.call(currentContext, js.JsValue.fromRaw(.Undefined), arr);
-            if (ret.getNormTag() != .Exception) return ret.as(bool, currentContext) catch false;
+            if (ret.getNormTag() != .Exception) return ret.as(i32, currentContext) catch 0;
             currentContext.dumpError();
-            return false;
+            return -1;
         }
 
         fn newInternal(ot: cc.OutputType) !*TinyCC {

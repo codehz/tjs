@@ -39,8 +39,8 @@ typedef struct __tjscallback_data {
   };
 } tjscallback_data;
 
-extern bool tjs_notify(tjscallback cb);
-extern bool tjs_notify_data(tjscallback cb, size_t num, tjscallback_data const *ptr);
+extern int tjs_notify(tjscallback cb);
+extern int tjs_notify_data(tjscallback cb, size_t num, tjscallback_data const *ptr);
 
 #define TJS_NOTIFY_DATA(cb, list...) ({ \
     tjscallback_data __tmp_callback_data__[] = { list }; \
