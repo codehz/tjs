@@ -212,6 +212,9 @@ pub fn build(b: *Builder) !void {
     quickjs.disable_sanitize_c = true;
     quickjs.disable_stack_probing = true;
     quickjs.linkLibC();
+    if (mode == .Debug) {
+        quickjs.defineCMacro("DUMP_FREE");
+    }
     quickjs.defineCMacro("EMSCRIPTEN");
     quickjs.defineCMacro("CONFIG_BIGNUM");
     quickjs.defineCMacro("CONFIG_VERSION=\"unknown\"");

@@ -137,7 +137,6 @@ pub fn main() anyerror!void {
     defer allocator.free(contents);
 
     const rt = js.JsRuntime.init();
-    defer rt.deinit();
 
     var xctx: GlobalContext = .{
         .allocator = allocator,
@@ -157,6 +156,7 @@ pub fn main() anyerror!void {
     if (val.getNormTag() == .Module) {
         _ = try setModuleMeta(ctx, val, rooturl, true);
         const ret = ctx.evalFunction(val);
+        defer ret.deinit(ctx);
         if (ret.getNormTag() == .Exception) {
             ctx.dumpError();
         }

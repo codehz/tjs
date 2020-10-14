@@ -644,16 +644,16 @@ pub const JsValue = extern struct {
         return @bitCast(usize, self.getTag()) >= @bitCast(usize, @enumToInt(JsTag.First));
     }
 
+    fn canBeFreed(self: @This()) bool {
+        return self.hasRefCount() and self.getTag() != .Module;
+    }
+
     pub fn deinit(self: @This(), ctx: *JsContext) void {
-        if (self.hasRefCount()) {
-            const header = @intToPtr(*JSRefCountHeader, self.getPointer());
-            header.rc -= 1;
-            if (header.rc <= 0) __JS_FreeValue(ctx, self);
-        }
+        self.deinitRT(ctx.getRuntime());
     }
 
     pub fn deinitRT(self: @This(), rt: *JsRuntime) void {
-        if (self.hasRefCount()) {
+        if (self.canBeFreed()) {
             const header = @intToPtr(*JSRefCountHeader, self.getPointer());
             header.rc -= 1;
             if (header.rc <= 0) __JS_FreeValueRT(rt, self);
