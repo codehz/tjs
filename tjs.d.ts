@@ -40,7 +40,7 @@ declare module "builtin:c" {
   };
 
   export class Compiler {
-    constructor(type: "memory");
+    constructor(type: "memory" | "exe" | "dll" | "obj" | "preprocessor");
     valid: boolean;
     compile(code: string): void;
     compileFile(file: string): void;
@@ -48,6 +48,7 @@ declare module "builtin:c" {
     linkDir(path: string): void;
     include(path: string): void;
     sysinclude(path: string): void;
+    output(path: string): void;
     run(...args: string[]): number;
     relocate<Recipe extends Record<string, string>>(recipe: Recipe): Relocated<Recipe>;
   }
