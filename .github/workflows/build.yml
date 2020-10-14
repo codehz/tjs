@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x86_64, i386]
-        mode: [ReleaseSmall, Debug]
+        mode: [ReleaseSafe, ReleaseFast, ReleaseSmall, Debug]
     runs-on: ubuntu-latest
     container: alpine:latest
     steps:
@@ -33,7 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x86_64, i386]
-        mode: [ReleaseSmall, Debug]
+        mode: [ReleaseSafe, ReleaseFast, ReleaseSmall, Debug]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
