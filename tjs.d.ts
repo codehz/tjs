@@ -5,10 +5,11 @@ declare module "builtin:c" {
 
   type SimpleParameterMapper<T extends string> =
     T extends `` ? [] :
-    T extends `${"i" | "d"}${infer next}` ? [number, ...ParameterMapper<next>] :
-    T extends `${"s" | "w"}${infer next}` ? [string, ...ParameterMapper<next>] :
-    T extends `v${infer next}` ? [ArrayBuffer, ...ParameterMapper<next>] :
-    T extends `${"b" | "p"}${infer next}` ? [BigInteger, ...ParameterMapper<next>] :
+    T extends `${"i" | "d"}${infer next}` ? [number, ...SimpleParameterMapper<next>] :
+    T extends `${"s" | "w"}${infer next}` ? [string, ...SimpleParameterMapper<next>] :
+    T extends `v${infer next}` ? [ArrayBuffer, ...SimpleParameterMapper<next>] :
+    T extends `b${infer next}` ? [bigint, ...SimpleParameterMapper<next>] :
+    T extends `p${infer next}` ? [bigint, ...SimpleParameterMapper<next>] :
     never;
 
   type ParameterMapper<T extends string> =
@@ -16,13 +17,14 @@ declare module "builtin:c" {
     T extends `${"i" | "d"}${infer next}` ? [number, ...ParameterMapper<next>] :
     T extends `${"s" | "w"}${infer next}` ? [string, ...ParameterMapper<next>] :
     T extends `v${infer next}` ? [ArrayBuffer, ...ParameterMapper<next>] :
-    T extends `${"b" | "p"}${infer next}` ? [BigInteger, ...ParameterMapper<next>] :
+    T extends `b${infer next}` ? [bigint, ...ParameterMapper<next>] :
+    T extends `p${infer next}` ? [bigint, ...ParameterMapper<next>] :
     T extends `[${infer part}]${infer next}` ? [CallbackFunctionMapper<part>, ...ParameterMapper<next>] :
     never;
 
   type ResultMapper<T extends string> =
     T extends ("i" | "d") ? number :
-    T extends ("b" | "p") ? BigInteger :
+    T extends ("b" | "p") ? bigint :
     T extends "_" ? void :
     never;
 
