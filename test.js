@@ -28,9 +28,9 @@ void lower(tjsvec_wstr vec) {
 }
 
 void callback(tjscallback cb) {
-  TJS_NOTIFY_DATA(cb, 1, TJS_DATA_INT(2));
-  TJS_NOTIFY_DATA(cb, 1, TJS_DATA_INT(1));
-  TJS_NOTIFY_DATA(cb, 1, TJS_DATA_INT(3));
+  TJS_NOTIFY_DATA(cb, 1, TJS_DATA(2));
+  TJS_NOTIFY_DATA(cb, 1, TJS_DATA(1));
+  TJS_NOTIFY_DATA(cb, 1, TJS_DATA(3));
 }
 `);
 const obj = compiler.relocate({
