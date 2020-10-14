@@ -32,8 +32,17 @@ fn setModuleMeta(ctx: *js.JsContext, root: js.JsValue, url: [:0]const u8, is_mai
     return ret;
 }
 
-fn makeUrl(allocator: *std.mem.Allocator, path: [:0]const u8) [:0]const u8 {
-    return "file://module";
+fn makeUrl(allocator: *std.mem.Allocator, path: [:0]const u8) ![:0]const u8 {
+    comptime const fileproto = if (std.Target.current.os.tag == .windows) "file:///" else "file://";
+    const ret = try allocator.allocSentinel(u8, path.len + fileproto.len, 0);
+    std.mem.copy(u8, ret[0..fileproto.len], fileproto);
+    if (std.Target.current.os.tag == .windows) {
+        for (path) |ch, i|
+            ret[i + fileproto.len] = if (ch == '\\') '/' else ch;
+    } else {
+        std.mem.copy(u8, ret[fileproto.len..], path);
+    }
+    return ret;
 }
 
 const Loader = struct {
@@ -81,7 +90,12 @@ const Loader = struct {
             _ = ctx.throw(.{ .Reference = errstr });
             return null;
         }
-        return setModuleMeta(ctx, value, makeUrl(allocator, filename), false) catch {
+        const murl = makeUrl(allocator, filename) catch {
+            _ = ctx.throw(.OutOfMemory);
+            return null;
+        };
+        defer allocator.free(murl);
+        return setModuleMeta(ctx, value, murl, false) catch {
             const errstr = std.fmt.allocPrint0(allocator, "eval module '{}' failed", .{filename}) catch return null;
             defer allocator.free(errstr);
             _ = ctx.throw(.{ .Reference = errstr });

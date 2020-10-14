@@ -1,3 +1,8 @@
+declare interface ImportMeta {
+  readonly url: string;
+  readonly main: boolean;
+}
+
 declare module "builtin:c" {
   export const os: "windows" | "linux";
   export const arch: "i386" | "x86_64" | "aarch64";
