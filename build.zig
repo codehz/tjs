@@ -179,6 +179,10 @@ pub fn build(b: *Builder) !void {
     const target = b.standardTargetOptions(.{});
     const native = try std.zig.system.NativeTargetInfo.detect(b.allocator, target);
     const mode = b.option(std.builtin.Mode, "mode", "Build mode") orelse .ReleaseSmall;
+    const strip = b.option(bool, "strip", "Enable strip") orelse mode == .ReleaseSmall;
+    if (mode == .Debug and strip) {
+        @panic("Disable strip for debug");
+    }
 
     const sqlite3 = b.addObject("sqlite3", null);
     sqlite3.disable_sanitize_c = true;
@@ -228,6 +232,7 @@ pub fn build(b: *Builder) !void {
     quickjs.install();
 
     const exe = b.addExecutable("tjs", "src/main.zig");
+    exe.strip = strip;
     exe.linkLibrary(quickjs);
     // exe.addObject(sqlite3);
     exe.addObject(tccobj);
