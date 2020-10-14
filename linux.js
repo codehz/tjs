@@ -1,7 +1,6 @@
 import { Compiler } from "builtin:c";
 import { log } from "builtin:io";
 const compiler = new Compiler("memory");
-compiler.link("user32");
 compiler.compile(`
 #include <stdio.h>
 
