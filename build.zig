@@ -178,7 +178,7 @@ fn bootstrap(b: *Builder, tcc: *std.build.LibExeObjStep, target: std.zig.CrossTa
 pub fn build(b: *Builder) !void {
     const target = b.standardTargetOptions(.{});
     const native = try std.zig.system.NativeTargetInfo.detect(b.allocator, target);
-    const mode = b.standardReleaseOptions();
+    const mode = b.option(std.builtin.Mode, "mode", "Build mode") orelse .ReleaseSmall;
 
     const sqlite3 = b.addObject("sqlite3", null);
     sqlite3.disable_sanitize_c = true;

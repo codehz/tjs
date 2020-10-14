@@ -9,6 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x86_64, i386]
+        mode: [ReleaseSmall, Debug]
     runs-on: ubuntu-latest
     container: alpine:latest
     steps:
@@ -21,17 +22,18 @@ jobs:
           version: master
       - name: Build on linux
         run: |
-          zig build -Dtarget=${{ matrix.arch }}-linux-musl -Drelease-small=true --verbose
-          zig build bootstrap -Dtarget=${{ matrix.arch }}-linux-musl -Drelease-small=true --verbose
+          zig build -Dtarget=${{ matrix.arch }}-linux-musl -Dmode=${{ matrix.mode }} --verbose
+          zig build bootstrap -Dtarget=${{ matrix.arch }}-linux-musl -Dmode=${{ matrix.mode }} --verbose
       - uses: actions/upload-artifact@v2
         with:
-          name: bin-${{ matrix.arch }}-${{ runner.os }}
+          name: bin-${{ matrix.arch }}-${{ runner.os }}-${{ matrix.mode }}
           path: zig-cache/bin
   build-windows:
     strategy:
       fail-fast: false
       matrix:
         arch: [x86_64, i386]
+        mode: [ReleaseSmall, Debug]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
@@ -54,9 +56,9 @@ jobs:
       - name: Build on windows
         run: |
           Get-Command rcedit
-          zig build -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
-          zig build bootstrap -Dtarget=${{ matrix.arch }}-windows-gnu -Drelease-small=true --verbose
+          zig build -Dtarget=${{ matrix.arch }}-windows-gnu -Dmode=${{ matrix.mode }} --verbose
+          zig build bootstrap -Dtarget=${{ matrix.arch }}-windows-gnu -Dmode=${{ matrix.mode }} --verbose
       - uses: actions/upload-artifact@v2
         with:
-          name: bin-${{ matrix.arch }}-${{ runner.os }}
+          name: bin-${{ matrix.arch }}-${{ runner.os }}-${{ matrix.mode }}
           path: zig-cache/bin
