@@ -443,26 +443,56 @@ pub const c = opaque {
         };
 
         fn fixFunction(allocator: *std.mem.Allocator, ctx: *js.JsContext, tcc: *TinyCC, atom: js.JsAtom, parameterName: [:0]const u8, value: js.JsValue) !FunctionInfo {
-            if (value.getNormTag() != .Object) return error.NotAnObject;
+            if (value.getNormTag() != .String) return error.RequireString;
             var ret: FunctionInfo = .{ .atom = atom, .name = parameterName };
-            const arguments = value.getProperty(ctx, "arguments") orelse return error.ArgumentsNotFound;
-            const result = value.getProperty(ctx, "result") orelse js.JsValue.fromRaw(.Undefined);
-            if (!ctx.detect(.Array, arguments)) return error.ArgumentsIsNotArray;
-            const length = try arguments.getProperty(ctx, length_atom).?.as(usize, ctx);
-            ret.arguments = try allocator.alloc(FunctionInfo.Type, length);
-            errdefer allocator.free(ret.arguments);
-            var i: usize = 0;
-            while (i < length) : (i += 1) {
-                const item = arguments.getProperty(ctx, i) orelse return error.InvalidArray;
-                const itemstr = try item.as(js.JsString, ctx);
-                defer itemstr.deinit(ctx);
-                ret.arguments[i] = std.meta.stringToEnum(FunctionInfo.Type, itemstr.data) orelse return error.UnknownType;
+            const str = try value.as(js.JsString, ctx);
+            defer str.deinit(ctx);
+            var tempargs = std.ArrayListUnmanaged(FunctionInfo.Type){};
+            defer tempargs.deinit(allocator);
+            const State = enum {
+                arguments,
+                callback,
+                result,
+            };
+            var s: State = .arguments;
+            for (str.data) |ch| {
+                switch (s) {
+                    .arguments => {
+                        const t: FunctionInfo.Type = switch (ch) {
+                            'i' => .integer,
+                            'd' => .double,
+                            's' => .string,
+                            'w' => .wstring,
+                            'v' => .vector,
+                            'p' => .pointer,
+                            '[' => .callback,
+                            '!' => {
+                                s = .result;
+                                continue;
+                            },
+                            else => return error.InvalidParameter,
+                        };
+                        try tempargs.append(allocator, t);
+                        if (t == .callback) s = .callback;
+                    },
+                    .callback => {
+                        if (ch == ']') {
+                            s = .arguments;
+                            continue;
+                        }
+                    },
+                    .result => {
+                        ret.result = switch (ch) {
+                            'i' => .integer,
+                            'd' => .double,
+                            'p' => .pointer,
+                            '_' => null,
+                            else => return error.InvalidResult,
+                        };
+                    },
+                }
             }
-            if (result.getNormTag() != .Undefined) {
-                const resultstr = try result.as(js.JsString, ctx);
-                defer resultstr.deinit(ctx);
-                ret.result = std.meta.stringToEnum(FunctionInfo.Type, resultstr.data) orelse return error.UnknownType;
-            }
+            ret.arguments = tempargs.toOwnedSlice(allocator);
             return ret;
         }
 

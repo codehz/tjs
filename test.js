@@ -30,13 +30,13 @@ void callback(tjscallback cb) {
   tjs_notify(cb);
   tjs_notify(cb);
 }
-`)
+`);
 const obj = compiler.relocate({
-  hello: { arguments: ["string"] },
-  add: { arguments: ["double", "double"], result: "double" },
-  msgbox: { arguments: ["wstring"] },
-  lower: { arguments: ["vector"] },
-  callback: { arguments: ["callback"] },
+  hello: "s",
+  add: "dd!d",
+  msgbox: "w",
+  lower: "v",
+  callback: "[]",
 });
 log(obj.hello(import.meta.url));
 log(obj.add(1, 2));

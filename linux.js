@@ -14,8 +14,8 @@ double add(double a, double b) {
 }
 `)
 const obj = compiler.relocate({
-  hello: { arguments: ["string"] },
-  add: { arguments: ["double", "double"], result: "double" },
+  hello: "s",
+  add: "dd!d",
 });
 log(obj.hello(import.meta.url));
 log(obj.add(1, 2));

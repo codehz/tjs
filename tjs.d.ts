@@ -1,40 +1,43 @@
 declare module "builtin:c" {
   export const os: "windows";
   export const arch: "i386" | "x86_64";
-  export const abi: "gnu";
-  export type SupportedType =
-    | "integer"
-    | "double"
-    | "string"
-    | "wstring"
-    | "vector"
-    | "pointer"
-    | "callback";
-  export type ResultSupportedType =
-    | "integer"
-    | "double"
-    | "pointer";
-  export interface BasicRecipeItem {
-    arguments: SupportedType[];
-    result?: ResultSupportedType;
-  }
-  type TypeMap<T extends SupportedType | void> =
-    T extends "integer" | "double" ? number :
-    T extends "string" ? string :
-    T extends "wstring" ? string :
-    T extends "vector" ? ArrayBuffer :
-    T extends "pointer" ? BigInteger :
-    T extends "callback" ? () => void :
-    T extends void ? void :
+  export const abi: "gnu" | "musl";
+
+  type SimpleParameterMapper<T extends string> =
+    T extends `` ? [] :
+    T extends `${"i" | "d"}${infer next}` ? [number, ...ParameterMapper<next>] :
+    T extends `${"s" | "w"}${infer next}` ? [string, ...ParameterMapper<next>] :
+    T extends `v${infer next}` ? [ArrayBuffer, ...ParameterMapper<next>] :
+    T extends `p${infer next}` ? [BigInteger, ...ParameterMapper<next>] :
     never;
-  type MMap<T> = T;
-  type TypeArrayMap<T extends SupportedType[]> = {
-    [K in keyof T]: T[K] extends SupportedType ? TypeMap<T[K]> : never;
+
+  type ParameterMapper<T extends string> =
+    T extends `` ? [] :
+    T extends `${"i" | "d"}${infer next}` ? [number, ...ParameterMapper<next>] :
+    T extends `${"s" | "w"}${infer next}` ? [string, ...ParameterMapper<next>] :
+    T extends `v${infer next}` ? [ArrayBuffer, ...ParameterMapper<next>] :
+    T extends `p${infer next}` ? [BigInteger, ...ParameterMapper<next>] :
+    T extends `[${infer part}]${infer next}` ? [CallbackFunctionMapper<part>, ...ParameterMapper<next>] :
+    never;
+
+  type ResultMapper<T extends string> =
+    T extends ("i" | "d") ? number :
+    T extends "p" ? BigInteger :
+    T extends "_" ? void :
+    never;
+
+  type CallbackFunctionMapper<T extends string> =
+    T extends `${infer args}?${infer res}` ? (...args: SimpleParameterMapper<args>) => ResultMapper<res> :
+    T extends `${infer args}` ? (...args: SimpleParameterMapper<args>) => void : never;
+
+  type FunctionMapper<T extends string> =
+    T extends `${infer args}!${infer res}` ? (...args: ParameterMapper<args>) => ResultMapper<res> :
+    T extends `${infer args}` ? (...args: ParameterMapper<args>) => void : never;
+
+  export type Relocated<T extends Record<string, string>> = {
+    [K in keyof T]: T[K] extends string ? FunctionMapper<T[K]> : never;
   };
-  type FunctionMap<T extends SupportedType[], R extends SupportedType | void> = (...args: TypeArrayMap<T>) => TypeMap<R>;
-  export type Relocated<T extends Record<string, BasicRecipeItem>> = {
-    [K in keyof T]: T[K] extends BasicRecipeItem ? FunctionMap<T[K]["arguments"], T[K]["result"]> : never;
-  };
+
   export class Compiler {
     constructor(type: "memory");
     valid: boolean;
@@ -45,7 +48,7 @@ declare module "builtin:c" {
     include(path: string): void;
     sysinclude(path: string): void;
     run(...args: string[]): number;
-    relocate<Recipe extends Record<string, BasicRecipeItem>>(recipe: Recipe): Relocated<Recipe>;
+    relocate<Recipe extends Record<string, string>>(recipe: Recipe): Relocated<Recipe>;
   }
 }
 
