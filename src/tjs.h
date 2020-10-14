@@ -34,11 +34,10 @@ typedef struct __tjscallback_data {
 extern bool tjs_notify(tjscallback cb);
 extern bool tjs_notify_data(tjscallback cb, size_t num, tjscallback_data const *ptr);
 
-#define TJS_NOTIFY_DATA(cb, list...) \
-  { \
+#define TJS_NOTIFY_DATA(cb, list...) ({ \
     tjscallback_data __tmp_callback_data__[] = { list }; \
-    tjs_notify_data(cb, sizeof(__tmp_callback_data__) / sizeof(tjscallback_data), &__tmp_callback_data__); \
-  }
+    tjs_notify_data(cb, sizeof(__tmp_callback_data__) / sizeof(tjscallback_data), __tmp_callback_data__); \
+  })
 #define TJS_DATA_VOID(value) (tjscallback_data){ type: 0, i: (value) }
 #define TJS_DATA_INT(value) (tjscallback_data){ type: 1, i: (value) }
 #define TJS_DATA_DOUBLE(value) (tjscallback_data){ type: 2, d: (value) }
