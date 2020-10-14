@@ -179,7 +179,7 @@ pub fn build(b: *Builder) !void {
     const target = b.standardTargetOptions(.{});
     const native = try std.zig.system.NativeTargetInfo.detect(b.allocator, target);
     const mode = b.option(std.builtin.Mode, "mode", "Build mode") orelse .ReleaseSmall;
-    const strip = b.option(bool, "strip", "Enable strip") orelse mode == .ReleaseSmall;
+    const strip = b.option(bool, "strip", "Enable strip") orelse (mode == .ReleaseSmall);
     if (mode == .Debug and strip) {
         @panic("Disable strip for debug");
     }
