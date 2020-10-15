@@ -453,7 +453,7 @@ pub const JsValue = extern struct {
                 }
 
                 pub fn from(e: JsValue) @This() {
-                    return @bitCast(@This(), e.storage - (JS_FLOAT64_TAG_ADDEND << 32));
+                    return @bitCast(@This(), @bitCast(u64, e.storage) - (JS_FLOAT64_TAG_ADDEND << 32));
                 }
 
                 comptime {
