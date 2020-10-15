@@ -399,7 +399,7 @@ pub const JsValue = extern struct {
     }
 
     fn box(comptime T: type) type {
-        return if (is64bit)
+        const ret = if (is64bit)
             extern struct {
                 val: T align(8),
                 tag: i64,
@@ -414,10 +414,6 @@ pub const JsValue = extern struct {
 
                 pub fn from(e: JsValue) @This() {
                     return @bitCast(@This(), e);
-                }
-
-                comptime {
-                    std.debug.assert(@bitSizeOf(@This()) == 128);
                 }
             }
         else switch (T) {
@@ -436,10 +432,6 @@ pub const JsValue = extern struct {
                 pub fn from(e: JsValue) @This() {
                     return @bitCast(@This(), e);
                 }
-
-                comptime {
-                    std.debug.assert(is64bit or T == f64 or @bitSizeOf(@This()) == 64);
-                }
             },
             f64 => extern struct {
                 val: T,
@@ -455,13 +447,13 @@ pub const JsValue = extern struct {
                 pub fn from(e: JsValue) @This() {
                     return @bitCast(@This(), @bitCast(u64, e.storage) - (JS_FLOAT64_TAG_ADDEND << 32));
                 }
-
-                comptime {
-                    std.debug.assert(is64bit or T != f64 or @bitSizeOf(@This()) == 64);
-                }
             },
             else => @compileError("unsupported type: " ++ @typeName(T)),
         };
+        comptime {
+            std.debug.assert(@sizeOf(ret) == @sizeOf(@This()));
+        }
+        return ret;
     }
 
     const JS_FLOAT64_TAG_ADDEND: comptime_int = 0x7ff80000 - @enumToInt(JsTag.First) + 1;
