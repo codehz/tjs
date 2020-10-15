@@ -192,7 +192,7 @@ pub fn build(b: *Builder) !void {
     sqlite3.setTarget(target);
     sqlite3.setBuildMode(mode);
 
-    const tccobj = b.addObject("tccobj", null);
+    const tccobj = b.addStaticLibrary("tccobj", null);
     tccobj.disable_sanitize_c = true;
     tccobj.disable_stack_probing = true;
     tccobj.linkLibC();
@@ -206,7 +206,7 @@ pub fn build(b: *Builder) !void {
     tcc.disable_stack_probing = true;
     tcc.linkLibC();
     tcc.defineCMacro("ONE_SOURCE=0");
-    tcc.addObject(tccobj);
+    tcc.linkLibrary(tccobj);
     tcc.addIncludeDir("tmp");
     tcc.addCSourceFile("vendor/tinycc/tcc.c", &[_][]const u8{"-Wno-everything"});
     tcc.setTarget(target);
@@ -229,13 +229,12 @@ pub fn build(b: *Builder) !void {
     quickjs.addCSourceFile("vendor/quickjs/libbf.c", &[_][]const u8{"-Wno-everything"});
     quickjs.setTarget(target);
     quickjs.setBuildMode(mode);
-    quickjs.install();
 
     const exe = b.addExecutable("tjs", "src/main.zig");
     exe.strip = strip;
     exe.linkLibrary(quickjs);
     // exe.addObject(sqlite3);
-    exe.addObject(tccobj);
+    exe.linkLibrary(tccobj);
     exe.setTarget(target);
     exe.setBuildMode(mode);
     exe.install();
