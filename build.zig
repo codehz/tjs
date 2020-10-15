@@ -180,6 +180,7 @@ pub fn build(b: *Builder) !void {
     const native = try std.zig.system.NativeTargetInfo.detect(b.allocator, target);
     const mode = b.option(std.builtin.Mode, "mode", "Build mode") orelse .ReleaseSmall;
     const strip = b.option(bool, "strip", "Enable strip") orelse (mode == .ReleaseSmall);
+    const dump_free = b.option(bool, "dump-free", "For GC debug") orelse false;
     if (mode == .Debug and strip) {
         @panic("Disable strip for debug");
     }
@@ -216,9 +217,7 @@ pub fn build(b: *Builder) !void {
     quickjs.disable_sanitize_c = true;
     quickjs.disable_stack_probing = true;
     quickjs.linkLibC();
-    if (mode == .Debug) {
-        quickjs.defineCMacro("DUMP_FREE");
-    }
+    if (dump_free) quickjs.defineCMacro("DUMP_FREE");
     quickjs.defineCMacro("EMSCRIPTEN");
     quickjs.defineCMacro("CONFIG_BIGNUM");
     quickjs.defineCMacro("CONFIG_VERSION=\"unknown\"");
