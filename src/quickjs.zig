@@ -394,6 +394,10 @@ pub const JsValue = extern struct {
             b: i32,
         },
 
+    pub fn format(value: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        try writer.print("{}", .{value.getValue()});
+    }
+
     fn box(comptime T: type) type {
         return if (is64bit)
             extern struct {

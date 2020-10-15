@@ -7,7 +7,10 @@ const purl = @import("./url.zig");
 
 const catom = js.JsAtom.comptimeAtom;
 
+const scoped = std.log.scoped(.main);
+
 fn setModuleMeta(ctx: *js.JsContext, root: js.JsValue, url: [:0]const u8, is_main: bool) !*js.JsModuleDef {
+    scoped.debug("set module meta for {} (url: {}, main: {})", .{ root, url, is_main });
     if (root.getNormTag() != .Module) return error.NotAModule;
     const ret: *js.JsModuleDef = root.getPointerT(js.JsModuleDef).?;
     const meta = ret.getImportMeta(ctx);
@@ -46,12 +49,17 @@ fn makeUrl(allocator: *std.mem.Allocator, path: [:0]const u8) ![:0]const u8 {
 }
 
 const Loader = struct {
+    const loaderLog = std.log.scoped(.@"module loader");
     header: js.JsModuleLoader = .{ .normalizefn = normalize, .loaderfn = loader },
 
     fn enormalize(allocator: *std.mem.Allocator, ctx: *js.JsContext, base: [:0]const u8, name: [:0]const u8) ![*:0]const u8 {
+        loaderLog.info("try normalize (base: {}, name: {})", .{ base, name });
+        errdefer loaderLog.warn("failed to normalize", .{});
         const baseurl = try purl.PartialURL.parse(allocator, base);
         defer baseurl.deinit(allocator);
+        loaderLog.debug("parsed url: {}", .{baseurl});
         const ret = baseurl.resolveModule(allocator, name) orelse return error.ResolveFailed;
+        loaderLog.info("result: {}", .{ret});
         return ret.ptr;
     }
 
@@ -62,6 +70,7 @@ const Loader = struct {
     }
 
     fn loader(self: *js.JsModuleLoader, ctx: *js.JsContext, name: [*:0]const u8) ?*js.JsModuleDef {
+        loaderLog.info("try load module: {}", .{name});
         const E = js.JsCFunctionListEntry;
         const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
         const cmp = std.cstr.cmp;
