@@ -31,6 +31,8 @@ pub const JsModuleLoader = struct {
 };
 
 pub const JsRuntime = opaque {
+    extern fn JS_ExecutePendingJob(rt: *JsRuntime, pctx: *?*JsContext) c_int;
+
     pub fn init() *@This() {
         return JS_NewRuntime().?;
     }
@@ -62,6 +64,12 @@ pub const JsRuntime = opaque {
 
     pub fn getOpaqueT(self: *@This(), comptime T: type) ?*T {
         return @ptrCast(?*T, @alignCast(@alignOf(*T), self.getOpaque()));
+    }
+
+    pub fn pending(self: *@This()) bool {
+        var ctx: ?*JsContext = null;
+        const ret = JS_ExecutePendingJob(self, &ctx);
+        return ret > 0;
     }
 };
 

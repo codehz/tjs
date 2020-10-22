@@ -189,4 +189,6 @@ pub fn main() anyerror!void {
     } else if (val.getNormTag() == .Exception) {
         ctx.dumpError();
     }
+    while (rt.pending()) {}
+    ctx.dumpError();
 }
