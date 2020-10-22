@@ -622,9 +622,10 @@ pub const c = opaque {
         }
 
         fn delete(rt: *js.JsRuntime, val: js.JsValue) callconv(.C) void {
-            if (val.getOpaqueT(TinyCC, class)) |tcc| {
-                tcc.deinit();
-            }
+            // TODO: Fix relocate
+            // if (val.getOpaqueT(TinyCC, class)) |tcc| {
+            //     tcc.deinit();
+            // }
         }
 
         pub fn init(ctx: *js.JsContext, mod: *js.JsModuleDef) !void {
