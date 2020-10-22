@@ -65,6 +65,13 @@ const Tcc1Info = struct {
             };
             r.dependOn(setupRun(b, tcc.run(), args.toOwnedSlice(), "CC {}/{}", .{ obj.path, obj.base }));
         }
+        if (tgt.os.tag == .windows) {
+            r.dependOn(&b.addInstallDirectory(.{
+                .source_dir = "extra/win32",
+                .install_dir = .Bin,
+                .install_subdir = "",
+            }).step);
+        }
         {
             var args = std.ArrayList([]const u8).init(b.allocator);
             try args.append("-ar");
@@ -230,6 +237,8 @@ pub fn build(b: *Builder) !void {
     quickjs.setBuildMode(mode);
 
     const exe = b.addExecutable("tjs", "src/main.zig");
+    exe.disable_sanitize_c = true;
+    exe.disable_stack_probing = true;
     exe.strip = strip;
     exe.linkLibrary(quickjs);
     // exe.addObject(sqlite3);
