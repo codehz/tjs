@@ -9,6 +9,8 @@ const catom = js.JsAtom.comptimeAtom;
 
 const scoped = std.log.scoped(.main);
 
+pub const enable_segfault_handler = false;
+
 fn setModuleMeta(ctx: *js.JsContext, root: js.JsValue, url: [:0]const u8, is_main: bool) !*js.JsModuleDef {
     scoped.debug("set module meta for {} (url: {}, main: {})", .{ root, url, is_main });
     if (root.getNormTag() != .Module) return error.NotAModule;
