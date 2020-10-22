@@ -127,7 +127,7 @@ pub const JsContext = opaque {
             input.ptr,
             input.len,
             filename,
-            @intCast(c_int, @bitCast(std.meta.Int(false, @bitSizeOf(@TypeOf(flags))), flags)),
+            @intCast(c_int, @bitCast(std.meta.Int(.unsigned, @bitSizeOf(@TypeOf(flags))), flags)),
         );
     }
 
@@ -789,7 +789,7 @@ pub const JsValue = extern struct {
     }) ![]JsPropertyEnum {
         var arr: [*]JsPropertyEnum = undefined;
         var len: u32 = 0;
-        const ret = JS_GetOwnPropertyNames(ctx, &arr, &len, self, @intCast(c_int, @bitCast(std.meta.Int(false, @bitSizeOf(@TypeOf(options))), options)));
+        const ret = JS_GetOwnPropertyNames(ctx, &arr, &len, self, @intCast(c_int, @bitCast(std.meta.Int(.unsigned, @bitSizeOf(@TypeOf(options))), options)));
         if (ret != 0) return error.NotAnObject;
         return arr[0..len];
     }
