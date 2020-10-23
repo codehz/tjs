@@ -51,6 +51,10 @@ typedef long NTSTATUS;
 #define STATUS_UNSUCCESSFUL ((NTSTATUS)0xC0000001L)
 #endif
 
+#ifndef STATUS_INFO_LENGTH_MISMATCH
+#define STATUS_INFO_LENGTH_MISMATCH ((NTSTATUS)0xC0000004L)
+#endif
+
 #ifndef ASSERT
 #ifdef _DEBUG
 #define ASSERT(x) assert(x)

@@ -11,14 +11,10 @@ const Tcc1Info = struct {
         base: []const u8,
         ext: Extension = .c,
     };
-    const Library = struct {
-        path: []const u8,
-        name: []const u8,
-    };
     global_incs: ?[]const []const u8 = null,
     extra_incs: ?[]const []const u8 = null,
     objs: []const Compile,
-    libs: ?[]const Library = null,
+    libs: ?[]const []const u8 = null,
 
     fn setupRun(b: *Builder, run: *std.build.RunStep, cmdline: []const []const u8, comptime format: []const u8, args: anytype) *std.build.Step {
         run.step.dependOn(&b.addLog(format ++ "\n", args).step);
@@ -87,10 +83,12 @@ const Tcc1Info = struct {
             .install_subdir = "lib",
         }).step);
         if (self.libs) |list| for (list) |lib| {
-            r.dependOn(&b.addInstallBinFile(
-                try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{}/{}", .{ lib.path, lib.name }),
-                try std.fmt.allocPrint(b.allocator, "lib/{}", .{lib.name}),
-            ).step);
+            var args = std.ArrayList([]const u8).init(b.allocator);
+            try args.append("-impdef");
+            try args.append(try std.fmt.allocPrint(b.allocator, "{}.dll", .{lib}));
+            try args.append("-o");
+            try args.append(try std.fmt.allocPrint(b.allocator, "tmp/lib/{}.def", .{lib}));
+            r.dependOn(setupRun(b, tcc.run(), args.toOwnedSlice(), "IMPDEF {}", .{lib}));
         };
         r.dependOn(&b.addInstallDirectory(.{
             .source_dir = "vendor/tinycc/include",
@@ -135,12 +133,39 @@ fn bootstrap(b: *Builder, tcc: *std.build.LibExeObjStep, target: std.zig.CrossTa
                 .{ .path = "lib", .base = try getArchStr("", native.target.cpu.arch), .ext = .S },
                 .{ .path = "lib", .base = try getArchStr("-bt", native.target.cpu.arch), .ext = .S },
             },
-            .libs = &[_]Tcc1Info.Library{
-                .{ .path = "win32/lib", .name = "msvcrt.def" },
-                .{ .path = "win32/lib", .name = "kernel32.def" },
-                .{ .path = "win32/lib", .name = "user32.def" },
-                .{ .path = "win32/lib", .name = "gdi32.def" },
-                .{ .path = "win32/lib", .name = "ws2_32.def" },
+            .libs = &[_][]const u8{
+                "ntdll",
+                "advapi32",
+                "bcrypt",
+                "comctl32",
+                "comdlg32",
+                "crypt32",
+                "cryptnet",
+                "gdi32",
+                "imm32",
+                "kernel32",
+                "lz32",
+                "mpr",
+                "msvcrt",
+                "mswsock",
+                "ncrypt",
+                "netapi32",
+                "ole32",
+                "oleaut32",
+                "psapi",
+                "rpcns4",
+                "rpcrt4",
+                "scarddlg",
+                "shell32",
+                "shlwapi",
+                "urlmon",
+                "user32",
+                "version",
+                "winmm",
+                "winscard",
+                "ws2_32",
+                "setupapi",
+                "wintrust",
             },
         },
         .linux => switch (native.target.cpu.arch) {
