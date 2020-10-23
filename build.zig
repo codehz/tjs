@@ -77,11 +77,6 @@ const Tcc1Info = struct {
             }
             r.dependOn(setupRun(b, tcc.run(), args.toOwnedSlice(), "LD libtcc1.a", .{}));
         }
-        r.dependOn(&b.addInstallDirectory(.{
-            .source_dir = "tmp/lib",
-            .install_dir = .Bin,
-            .install_subdir = "lib",
-        }).step);
         if (self.libs) |list| for (list) |lib| {
             var args = std.ArrayList([]const u8).init(b.allocator);
             try args.append("-impdef");
@@ -90,6 +85,11 @@ const Tcc1Info = struct {
             try args.append(try std.fmt.allocPrint(b.allocator, "tmp/lib/{}.def", .{lib}));
             r.dependOn(setupRun(b, tcc.run(), args.toOwnedSlice(), "IMPDEF {}", .{lib}));
         };
+        r.dependOn(&b.addInstallDirectory(.{
+            .source_dir = "tmp/lib",
+            .install_dir = .Bin,
+            .install_subdir = "lib",
+        }).step);
         r.dependOn(&b.addInstallDirectory(.{
             .source_dir = "vendor/tinycc/include",
             .install_dir = .Bin,
