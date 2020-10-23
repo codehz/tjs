@@ -148,6 +148,7 @@ pub const JsContext = opaque {
     }
 
     fn dumpObject(self: *@This(), out: anytype, ex: JsValue) void {
+        if (ex.getTag() == .Null) return;
         const str = ex.as(JsString, self) catch return;
         defer str.deinit(self);
         out.print("{}\n", .{str.data}) catch {};
