@@ -1,2 +1,2 @@
-extra\* linguist-vendored
+extra/* linguist-vendored
 *.h linguist-language=c
