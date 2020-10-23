@@ -230,7 +230,7 @@ pub const PartialURL = struct {
                     return resolvePath(allocator, &[_][]const u8{rurl.data.normal.path.?}) catch null;
                 },
                 .builtin => {
-                    return allocator.dupeZ(u8, rurl.data.entity) catch null;
+                    return allocator.dupeZ(u8, side) catch null;
                 },
                 .unknown => return null,
             }
@@ -266,5 +266,5 @@ test "resolve module" {
     defer url.deinit(std.testing.allocator);
     const t2 = url.resolveModule(std.testing.allocator, "builtin:c") orelse unreachable;
     defer std.testing.allocator.free(t2);
-    try std.io.getStdOut().writer().print("{}\n", .{ t2 });
+    try std.io.getStdOut().writer().print("{}\n", .{t2});
 }

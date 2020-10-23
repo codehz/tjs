@@ -119,7 +119,7 @@ fn loadAllMods(comptime mod: type, ctx: *js.JsContext) !void {
     inline for (std.meta.declarations(mod)) |decl| {
         if (!decl.is_pub) continue;
         const field = @field(mod, decl.name);
-        _ = try js.JsModuleDef.init(decl.name ++ "", ctx, field);
+        _ = try js.JsModuleDef.init("builtin:" ++ decl.name, ctx, field);
     }
 }
 
