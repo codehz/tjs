@@ -22,6 +22,7 @@ pub const c = opaque {
         var class: js.JsClassID = .initial;
 
         functions: std.ArrayListUnmanaged(Compiler.FunctionInfo) = .{},
+        backref: js.JsValue,
 
         fn delete(rt: *js.JsRuntime, val: js.JsValue) callconv(.C) void {
             if (val.getOpaqueT(@This(), class)) |self| {
@@ -31,6 +32,7 @@ pub const c = opaque {
                     item.deinit(allocator);
                 }
                 self.functions.deinit(allocator);
+                self.backref.deinitRT(rt);
                 allocator.destroy(self);
             }
         }
@@ -45,11 +47,18 @@ pub const c = opaque {
             }
         }
 
+        fn mark(rt: *js.JsRuntime, this: js.JsValue, markfn: js.JS_MarkFunc) callconv(.C) void {
+            if (this.getOpaqueT(@This(), class)) |self| {
+                self.backref.mark(rt, markfn);
+            }
+        }
+
         pub fn init(ctx: *js.JsContext, mod: *js.JsModuleDef) !void {
             class.init();
             class.define(ctx.getRuntime(), &js.JsClassDef{
                 .name = name,
                 .finalizer = delete,
+                .gcMark = mark,
             });
         }
 
@@ -212,6 +221,7 @@ pub const c = opaque {
                 }
                 for (funcs.items) |*item| if (item.loadsym(tcc, ctx)) |ret| return ret;
                 const proxy = allocator.create(FunctionProxy) catch return ctx.throw(.OutOfMemory);
+                proxy.backref = this.clone();
                 proxy.functions = funcs;
                 return proxy.create(ctx);
             } else {
@@ -622,10 +632,9 @@ pub const c = opaque {
         }
 
         fn delete(rt: *js.JsRuntime, val: js.JsValue) callconv(.C) void {
-            // TODO: Fix relocate
-            // if (val.getOpaqueT(TinyCC, class)) |tcc| {
-            //     tcc.deinit();
-            // }
+            if (val.getOpaqueT(TinyCC, class)) |tcc| {
+                tcc.deinit();
+            }
         }
 
         pub fn init(ctx: *js.JsContext, mod: *js.JsModuleDef) !void {

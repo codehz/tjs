@@ -883,10 +883,14 @@ pub const JsValue = extern struct {
         if (ctx.detect(.Exception, ret)) return error.FailedToStringify;
         return ret;
     }
+
+    pub fn mark(self: @This(), tt: *JsRuntime, markFunc: JS_MarkFunc) void {
+        JS_MarkValue(tt, self, markFunc);
+    }
 };
 
 const JsGCObjectHeader = opaque {};
-const JS_MarkFunc = fn (rt: *JsRuntime, gp: *JsGCObjectHeader) void;
+pub const JS_MarkFunc = fn (rt: *JsRuntime, gp: *JsGCObjectHeader) callconv(.C) void;
 extern fn JS_NewRuntime() ?*JsRuntime;
 extern fn JS_FreeRuntime(rt: *JsRuntime) void;
 extern fn JS_RunGC(rt: *JsRuntime) void;
