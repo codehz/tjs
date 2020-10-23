@@ -169,6 +169,7 @@ pub fn main() anyerror!void {
     };
 
     rt.setOpaque(&xctx);
+    defer rt.deinit();
 
     var loader: Loader = .{};
     rt.setModuleLoader(&loader.header);
