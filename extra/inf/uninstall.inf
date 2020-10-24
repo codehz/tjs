@@ -1,0 +1,7 @@
+[Version]
+Signature="$CHICAGO$"
+[Defaultinstall]
+DelReg=addtjsfile
+[addtjsfile]
+HKCR,".tjs"
+HKCR,"Hz.tinyjs"

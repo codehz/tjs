@@ -1,2 +1,3 @@
 extra/* linguist-vendored
 *.h linguist-language=c
+*.inf eol=crlf

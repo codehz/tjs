@@ -277,6 +277,12 @@ pub fn build(b: *Builder) !void {
             "src/tjs.ico"
         });
         exe.install_step.?.step.dependOn(&rcedit.step);
+
+        exe.install_step.?.step.dependOn(&b.addInstallDirectory(.{
+            .source_dir = "extra/inf",
+            .install_dir = .Bin,
+            .install_subdir = ""
+        }).step);
     }
 
     const tcc1 = try bootstrap(b, tcc, target);
