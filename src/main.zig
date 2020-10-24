@@ -72,8 +72,19 @@ const Loader = struct {
         return enormalize(allocator, ctx, std.mem.span(base), std.mem.span(name)) catch (allocator.dupeZ(u8, std.mem.span(name)) catch unreachable);
     }
 
+    fn openEx(allocator: *std.mem.Allocator, filename: []const u8) !std.fs.File {
+        return std.fs.cwd().openFile(filename, .{}) catch |e| switch (e) {
+            error.FileNotFound => {
+                const added = try std.fmt.allocPrint(allocator, "{}.tjs", .{filename});
+                defer allocator.free(added);
+                return std.fs.cwd().openFile(added, .{});
+            },
+            else => return e,
+        };
+    }
+
     fn readFile(allocator: *std.mem.Allocator, filename: []const u8) ![:0]const u8 {
-        const file = try std.fs.cwd().openFile(filename, .{});
+        const file = try openEx(allocator, filename);
         defer file.close();
         return file.readToEndAllocOptions(allocator, 1024 * 1024 * 1024, null, 1, 0);
     }
