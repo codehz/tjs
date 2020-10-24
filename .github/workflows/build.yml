@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-      - uses: codehz/setup-zig@v1.2.6
+      - uses: codehz/setup-zig@v1.2.7
         with:
           version: ${{ env.zig-version }}
       - name: Build on linux
@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-      - uses: codehz/setup-zig@v1.2.6
+      - uses: codehz/setup-zig@v1.2.7
         with:
           version: ${{ env.zig-version }}
       - name: Download rcedit.exe
