@@ -3,6 +3,9 @@ on:
   push:
     branches: [ 💥 ]
 
+env:
+  zig-version: 0.6.0-4b48fccad
+
 jobs:
   build-linux:
     strategy:
@@ -13,13 +16,17 @@ jobs:
     runs-on: ubuntu-latest
     container: alpine:latest
     steps:
-      - run: apk add git musl-dev
+      - name: Setup basic build environment
+        run: apk add git musl-dev wget
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-      - uses: goto-bus-stop/setup-zig@v1
-        with:
-          version: 0.6.0-4b48fccad
+      - name: Setup zig version ${{ env.zig-version }}
+        run: |
+          wget -o ${{ runner.temp }}/zig.tar.xz https://ziglang.org/builds/zig-linux-x86_64-${{ env.zig-version }}.tar.xz
+          mkdir -p ${{ runner.tool_cache }}/zig
+          tar xvf ${{ runner.temp }}/zig.tar.xz --strip-components 1 -C ${{ runner.tool_cache }}/zig
+          echo "${{ runner.tool_cache }}/zig" >> $GITHUB_PATH
       - name: Build on linux
         run: |
           zig build -Dtarget=${{ matrix.arch }}-linux-musl -Dmode=${{ matrix.mode }} --verbose
@@ -39,9 +46,13 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-      - uses: goto-bus-stop/setup-zig@v1
-        with:
-          version: 0.6.0-4b48fccad
+      - name: Setup zig version ${{ env.zig-version }}
+        run: |
+          wget -o ${{ runner.temp }}/zig.tar.xz https://ziglang.org/builds/zig-linux-x86_64-${{ env.zig-version }}.tar.xz
+          mkdir -p ${{ runner.tool_cache }}/zig
+          tar xvf ${{ runner.temp }}/zig.tar.xz --strip-components 1 -C ${{ runner.tool_cache }}/zig
+          echo "${{ runner.tool_cache }}\\zig" >> $GITHUB_PATH
+        shell: bash
       - name: Download rcedit.exe
         uses: robinraju/release-downloader@v1
         with:
