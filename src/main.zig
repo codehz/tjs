@@ -72,6 +72,12 @@ const Loader = struct {
         return enormalize(allocator, ctx, std.mem.span(base), std.mem.span(name)) catch (allocator.dupeZ(u8, std.mem.span(name)) catch unreachable);
     }
 
+    fn readFile(allocator: *std.mem.Allocator, filename: []const u8) ![:0]const u8 {
+        const file = try std.fs.cwd().openFile(filename, .{});
+        defer file.close();
+        return file.readToEndAllocOptions(allocator, 1024 * 1024 * 1024, null, 1, 0);
+    }
+
     fn loader(self: *js.JsModuleLoader, ctx: *js.JsContext, name: [*:0]const u8) ?*js.JsModuleDef {
         loaderLog.info("try load module: {}", .{name});
         const E = js.JsCFunctionListEntry;
@@ -79,14 +85,7 @@ const Loader = struct {
         const cmp = std.cstr.cmp;
         const out = std.io.getStdOut().writer();
         const filename = std.mem.span(name);
-        const file = std.fs.cwd().openFile(filename, .{}) catch {
-            const errstr = std.fmt.allocPrint0(allocator, "could not load module filename '{}': open failed", .{filename}) catch return null;
-            defer allocator.free(errstr);
-            _ = ctx.throw(.{ .Reference = errstr });
-            return null;
-        };
-        defer file.close();
-        const data = file.readToEndAllocOptions(allocator, 1024 * 1024 * 1024, null, 1, 0) catch {
+        const data = readFile(allocator, filename) catch {
             const errstr = std.fmt.allocPrint0(allocator, "could not load module filename '{}': read failed", .{filename}) catch return null;
             defer allocator.free(errstr);
             _ = ctx.throw(.{ .Reference = errstr });
