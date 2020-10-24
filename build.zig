@@ -270,7 +270,12 @@ pub fn build(b: *Builder) !void {
     if (native.target.os.tag == .windows) {
         const rcedit = b.addSystemCommand(&[_][]const u8{"rcedit"});
         rcedit.addArtifactArg(exe.install_step.?.artifact);
-        rcedit.addArgs(&[_][]const u8{ "--application-manifest", "src/app.manifest" });
+        rcedit.addArgs(&[_][]const u8{
+            "--application-manifest",
+            "src/app.manifest",
+            "--set-icon",
+            "src/tjs.ico"
+        });
         exe.install_step.?.step.dependOn(&rcedit.step);
     }
 
