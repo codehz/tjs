@@ -23,7 +23,7 @@ jobs:
           submodules: recursive
       - name: Setup zig version ${{ env.zig-version }}
         run: |
-          wget -o ${{ runner.temp }}/zig.tar.xz https://ziglang.org/builds/zig-linux-x86_64-${{ env.zig-version }}.tar.xz
+          wget -O ${{ runner.temp }}/zig.tar.xz https://ziglang.org/builds/zig-linux-x86_64-${{ env.zig-version }}.tar.xz
           mkdir -p ${{ runner.tool_cache }}/zig
           tar xvf ${{ runner.temp }}/zig.tar.xz --strip-components 1 -C ${{ runner.tool_cache }}/zig
           echo "${{ runner.tool_cache }}/zig" >> $GITHUB_PATH
@@ -48,7 +48,7 @@ jobs:
           submodules: recursive
       - name: Setup zig version ${{ env.zig-version }}
         run: |
-          wget -o ${{ runner.temp }}/zig.tar.xz https://ziglang.org/builds/zig-linux-x86_64-${{ env.zig-version }}.tar.xz
+          wget -O ${{ runner.temp }}/zig.tar.xz https://ziglang.org/builds/zig-linux-x86_64-${{ env.zig-version }}.tar.xz
           mkdir -p ${{ runner.tool_cache }}/zig
           tar xvf ${{ runner.temp }}/zig.tar.xz --strip-components 1 -C ${{ runner.tool_cache }}/zig
           echo "${{ runner.tool_cache }}\\zig" >> $GITHUB_PATH
