@@ -151,8 +151,7 @@ pub fn main() anyerror!void {
         return error.NotEnoughArguments;
     }
 
-    const filename = try std.cstr.addNullByte(allocator, args[1]);
-    defer allocator.free(filename);
+    const filename = args[1];
 
     const rooturl = try tourl(allocator, filename);
     defer allocator.free(rooturl);
