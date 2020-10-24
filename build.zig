@@ -222,6 +222,10 @@ pub fn build(b: *Builder) !void {
     tccobj.disable_stack_probing = true;
     tccobj.linkLibC();
     tccobj.addIncludeDir("tmp");
+    if (native.target.os.tag == .windows) {
+        tccobj.linkSystemLibrary("ntdll");
+        tccobj.addCSourceFile("extra/utf8fix/fix.c", &[_][]const u8{});
+    }
     tccobj.addCSourceFile("vendor/tinycc/libtcc.c", &[_][]const u8{"-Wno-everything"});
     tccobj.setTarget(target);
     tccobj.setBuildMode(mode);

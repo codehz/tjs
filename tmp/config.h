@@ -11,6 +11,24 @@
 #endif
 #ifdef _WIN32
 #define TCC_TARGET_PE
+
+typedef struct _iobuf FILE;
+extern FILE *utf8_fopen(const char *path, const char *mode);
+extern FILE *utf8_freopen(const char *path, const char *mode, FILE *stream);
+extern int utf8__stat(const char *path, struct _stat *buff);
+extern char *utf8_getcwd(char *buff, int size);
+extern char *utf8_getenv(const char *var);
+extern int utf8_open(const char *path, int flag, ...);
+extern int utf8_system(const char *command);
+#define fopen utf8_fopen
+#define freopen utf8_freopen
+#define _stat utf8__stat
+#define stat utf8__stat
+#define getcwd utf8_getcwd
+#define getenv utf8_getenv
+#define open utf8_open
+#define system utf8_system
+
 #else
 #define TCC_LIBTCC1 "lib/libtcc1.a"
 #endif
