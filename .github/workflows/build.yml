@@ -17,13 +17,13 @@ jobs:
     container: alpine:latest
     steps:
       - name: Setup basic build environment
-        run: apk add git musl-dev wget
+        run: apk add git musl-dev curl
       - uses: actions/checkout@v2
         with:
           submodules: recursive
       - name: Setup zig version ${{ env.zig-version }}
         run: |
-          wget -O ${{ runner.temp }}/zig.tar.xz https://ziglang.org/builds/zig-linux-x86_64-${{ env.zig-version }}.tar.xz
+          curl --output ${{ runner.temp }}/zig.tar.xz https://ziglang.org/builds/zig-linux-x86_64-${{ env.zig-version }}.tar.xz
           mkdir -p ${{ runner.tool_cache }}/zig
           tar xvf ${{ runner.temp }}/zig.tar.xz --strip-components 1 -C ${{ runner.tool_cache }}/zig
           echo "${{ runner.tool_cache }}/zig" >> $GITHUB_PATH
@@ -48,7 +48,7 @@ jobs:
           submodules: recursive
       - name: Setup zig version ${{ env.zig-version }}
         run: |
-          wget -O ${{ runner.temp }}/zig.tar.xz https://ziglang.org/builds/zig-linux-x86_64-${{ env.zig-version }}.tar.xz
+          curl --output ${{ runner.temp }}/zig.tar.xz https://ziglang.org/builds/zig-linux-x86_64-${{ env.zig-version }}.tar.xz
           mkdir -p ${{ runner.tool_cache }}/zig
           tar xvf ${{ runner.temp }}/zig.tar.xz --strip-components 1 -C ${{ runner.tool_cache }}/zig
           echo "${{ runner.tool_cache }}\\zig" >> $GITHUB_PATH
