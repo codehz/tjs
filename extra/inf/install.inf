@@ -6,6 +6,6 @@ AddReg=addtjsfile
 HKCR,".tjs",,,"Hz.tinyjs"
 HKCR,".tjs","Content Type",,"application/tinyjs"
 HKCR,"Hz.tinyjs",,,"tjs file"
-HKCR,"Hz.tinyjs\DefaultIcon",,,"""%01%\tjs.exe"",46"
+HKCR,"Hz.tinyjs\DefaultIcon",,,"""%01%\tjs.exe"""
 HKCR,"Hz.tinyjs\Shell\Open\Command",,,"""%01%\tjs.exe"" ""%1"""
 HKLM,"Software\Microsoft\Windows\CurrentVersion\App Paths\tjs.exe",,,"""%01%\tjs.exe"""
