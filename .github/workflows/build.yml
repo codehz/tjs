@@ -23,7 +23,7 @@ jobs:
           submodules: recursive
       - name: Setup zig version ${{ env.zig-version }}
         run: |
-          mkdir ${{ runner.temp }}
+          mkdir -p ${{ runner.temp }}
           curl --output ${{ runner.temp }}/zig.tar.xz https://ziglang.org/builds/zig-linux-x86_64-${{ env.zig-version }}.tar.xz
           mkdir -p ${{ runner.tool_cache }}/zig
           tar xvf ${{ runner.temp }}/zig.tar.xz --strip-components 1 -C ${{ runner.tool_cache }}/zig
@@ -49,7 +49,7 @@ jobs:
           submodules: recursive
       - name: Setup zig version ${{ env.zig-version }}
         run: |
-          mkdir ${{ runner.temp }}
+          mkdir -p ${{ runner.temp }}
           curl --output ${{ runner.temp }}/zig.tar.xz https://ziglang.org/builds/zig-linux-x86_64-${{ env.zig-version }}.tar.xz
           mkdir -p ${{ runner.tool_cache }}/zig
           tar xvf ${{ runner.temp }}/zig.tar.xz --strip-components 1 -C ${{ runner.tool_cache }}/zig
