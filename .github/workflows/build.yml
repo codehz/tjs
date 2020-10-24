@@ -19,7 +19,7 @@ jobs:
           submodules: recursive
       - uses: goto-bus-stop/setup-zig@v1
         with:
-          version: 0.6.0-198d1438e
+          version: 0.6.0-4b48fccad
       - name: Build on linux
         run: |
           zig build -Dtarget=${{ matrix.arch }}-linux-musl -Dmode=${{ matrix.mode }} --verbose
@@ -41,7 +41,7 @@ jobs:
           submodules: recursive
       - uses: goto-bus-stop/setup-zig@v1
         with:
-          version: 0.6.0-198d1438e
+          version: 0.6.0-4b48fccad
       - name: Download rcedit.exe
         uses: robinraju/release-downloader@v1
         with:
