@@ -55,9 +55,9 @@ jobs:
           echo "${{ runner.tool_cache }}\rcedit" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build on windows
         run: |
-          Get-Command rcedit
           zig build -Dtarget=${{ matrix.arch }}-windows-gnu -Dmode=${{ matrix.mode }} --verbose
           zig build bootstrap -Dtarget=${{ matrix.arch }}-windows-gnu -Dmode=${{ matrix.mode }} --verbose
+        shell: bash
       - uses: actions/upload-artifact@v2
         with:
           name: bin-${{ matrix.arch }}-${{ runner.os }}-${{ matrix.mode }}
