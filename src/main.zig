@@ -16,6 +16,7 @@ fn setModuleMeta(ctx: *js.JsContext, root: js.JsValue, url: [:0]const u8, is_mai
     if (root.getNormTag() != .Module) return error.NotAModule;
     const ret: *js.JsModuleDef = root.getPointerT(js.JsModuleDef).?;
     const meta = ret.getImportMeta(ctx);
+    defer meta.deinit(ctx);
     var res = true;
     res = res and try meta.defineProperty(ctx, catom(ctx, "url"), .{
         .configurable = false,
