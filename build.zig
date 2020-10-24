@@ -217,14 +217,6 @@ pub fn build(b: *Builder) !void {
         @panic("Disable strip for debug");
     }
 
-    const sqlite3 = b.addObject("sqlite3", null);
-    sqlite3.disable_sanitize_c = true;
-    sqlite3.disable_stack_probing = true;
-    sqlite3.linkLibC();
-    sqlite3.addCSourceFile("vendor/sqlite3/sqlite3.c", &[_][]const u8{"-Wno-everything"});
-    sqlite3.setTarget(target);
-    sqlite3.setBuildMode(mode);
-
     const tccobj = b.addStaticLibrary("tccobj", null);
     tccobj.disable_sanitize_c = true;
     tccobj.disable_stack_probing = true;
@@ -266,7 +258,6 @@ pub fn build(b: *Builder) !void {
     exe.disable_stack_probing = true;
     exe.strip = strip;
     exe.linkLibrary(quickjs);
-    // exe.addObject(sqlite3);
     exe.linkLibrary(tccobj);
     exe.setTarget(target);
     exe.setBuildMode(mode);
