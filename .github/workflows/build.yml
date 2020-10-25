@@ -89,7 +89,6 @@ jobs:
         uses: actions/download-artifact@v2
       - name: List folders
         run: |
-          echo -n 'files=' > $GITHUB_ENV
-          ls | tee -a $GITHUB_ENV
+          echo "files=$(ls | xargs)" | tee $GITHUB_ENV
       - name: Test env
         run: echo ${{ env.files }}
