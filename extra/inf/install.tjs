@@ -122,18 +122,22 @@ void pcloseKey(HKEY *pk) {
   wchar_t const *name = text; \\
   int name##_len = sizeof text
 
-int install(wchar_t const *current, wchar_t const *open) {
+int install(int localmachine, wchar_t const *current, wchar_t const *open) {
   const int clen = lstrlenW(current) * 2 + 1;
   const int openlen = lstrlenW(open) * 2 + 1;
   DefStr(ProgId, L"Hz.tinyjs");
   DefStr(ContentType, L"text/plain");
+
+  HKEY scoped(pcloseKey) root;
+  CheckReg(RegOpenKey(localmachine ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, L"SOFTWARE\\\\Classes", &root));
+
   HKEY scoped(pcloseKey) dot;
-  CheckReg(RegCreateKey(HKEY_CLASSES_ROOT, L".tjs", &dot));
+  CheckReg(RegCreateKey(root, L".tjs", &dot));
   CheckReg(RegSetValueEx(dot, NULL, 0, REG_SZ, (BYTE const *)ProgId, ProgId_len));
   CheckReg(RegSetValueEx(dot, L"Content Type", 0, REG_SZ, (BYTE const *)ContentType, ContentType_len));
 
   HKEY scoped(pcloseKey) prog;
-  CheckReg(RegCreateKey(HKEY_CLASSES_ROOT, L"Hz.tinyjs", &prog));
+  CheckReg(RegCreateKey(root, L"Hz.tinyjs", &prog));
   CheckReg(RegSetKeyValueW(prog, L"DefaultIcon", NULL, REG_SZ, (BYTE const *)current, clen));
   CheckReg(RegSetKeyValueW(prog, L"Shell\\\\Open\\\\Command", NULL, REG_SZ, (BYTE const *)open, openlen));
 
@@ -207,55 +211,74 @@ int RegDelnode (HKEY hKeyRoot, LPTSTR lpSubKey) {
   return RegDelnodeRecurse(hKeyRoot, szDelKey);
 }
 
-int uninstall() {
-  CheckReg(RegDelnode(HKEY_CLASSES_ROOT, L".tjs"));
-  CheckReg(RegDelnode(HKEY_CLASSES_ROOT, L"Hz.tinyjs"));
+int uninstall(int localmachine) {
+  HKEY scoped(pcloseKey) root;
+  CheckReg(RegOpenKey(localmachine ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, L"SOFTWARE\\\\Classes", &root));
+
+  CheckReg(RegDelnode(root, L".tjs"));
+  CheckReg(RegDelnode(root, L"Hz.tinyjs\\\\DefaultIcon"));
+  CheckReg(RegDelnode(root, L"Hz.tinyjs\\\\Shell\\\\Open\\\\Command"));
+  CheckReg(RegDelnode(root, L"Hz.tinyjs"));
 
   SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, 0, 0);
   return 0;
 }
 `);
-const obj = compiler.relocate({
+const api = compiler.relocate({
     getexepath: "[w]!i",
     checkIsProcessElevated: "!i",
     elevate: "w",
     msg: "w",
     dialog: "wwwwwwww!i",
-    install: "ww!i",
-    uninstall: "!i",
+    install: "iww!i",
+    uninstall: "i!i",
 });
-if (!obj.checkIsProcessElevated()) {
-    obj.elevate(current);
-}
-else {
-    const clicked = obj.dialog("TinyJS Installer", "Install TJS", "Register *.tjs file type", "Copyright info", "Copyright 2020 CodeHz. All rights reserved.\nLicensed under the MIT license. See LICENSE file in the project root for details.", "Source code and issue tracker: <A HREF=\"tjs\">github.com/codehz/tjs</A>", "Install", "Uninstall");
+if (!api.checkIsProcessElevated()) {
+    const clicked = api.dialog("TinyJS Installer", "Install/uninstall TJS", "Choose an install/uninstall method", "Copyright info", "Copyright 2020 CodeHz. All rights reserved.\nLicensed under the MIT license. See LICENSE file in the project root for details.", "Source code and issue tracker: <A HREF=\"tjs\">github.com/codehz/tjs</A>", "Install/Uninstall for current user", "Install/Uninstall for system");
     switch (clicked) {
         case 101:
-            {
-                let path = "";
-                obj.getexepath(x => { path = x; });
-                const quoted = `"${path}"`;
-                const open = `${quoted} "%1" %*`;
-                const res = obj.install(quoted, open);
-                if (res == 0) {
-                    obj.msg("Installation success!");
-                }
-                else {
-                    obj.msg(`Installation failed, code: ${res}!`);
-                }
-            }
+            start(false);
             break;
         case 102:
-            {
-                const res = obj.uninstall();
-                if (res == 0) {
-                    obj.msg("Uninstallation success!");
-                }
-                else {
-                    obj.msg(`Uninstallation failed, code: ${res}!`);
-                }
-            }
+            api.elevate(current);
             break;
         default:
+    }
+}
+else {
+    start(true);
+}
+function start(system) {
+    const clicked = api.dialog("TinyJS Installer", `Install TJS (${system ? "for system" : "for current user"})`, "Register *.tjs file type", "Copyright info", "Copyright 2020 CodeHz. All rights reserved.\nLicensed under the MIT license. See LICENSE file in the project root for details.", "Source code and issue tracker: <A HREF=\"tjs\">github.com/codehz/tjs</A>", "Install", "Uninstall");
+    switch (clicked) {
+        case 101:
+            doinstall(system);
+            break;
+        case 102:
+            douninstall(system);
+            break;
+        default: break;
+    }
+}
+function doinstall(system) {
+    let path = "";
+    api.getexepath(x => { path = x; });
+    const quoted = `"${path}"`;
+    const open = `${quoted} "%1" %*`;
+    const res = api.install(system ? 1 : 0, quoted, open);
+    if (res == 0) {
+        api.msg("Installation success!");
+    }
+    else {
+        api.msg(`Installation failed, code: ${res}!`);
+    }
+}
+function douninstall(system) {
+    const res = api.uninstall(system ? 1 : 0);
+    if (res == 0) {
+        api.msg("Uninstallation success!");
+    }
+    else {
+        api.msg(`Uninstallation failed, code: ${res}!`);
     }
 }
