@@ -137,7 +137,6 @@ fn bootstrap(b: *Builder, tcc: *std.build.LibExeObjStep, target: std.zig.CrossTa
                 "ntdll",
                 "advapi32",
                 "bcrypt",
-                "comctl32",
                 "comdlg32",
                 "crypt32",
                 "cryptnet",
