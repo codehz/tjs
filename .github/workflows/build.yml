@@ -38,7 +38,6 @@ jobs:
       matrix:
         arch: [x86_64, i386]
         mode: [ReleaseFast, ReleaseSmall, Debug]
-        extra: [true, false]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
@@ -60,18 +59,22 @@ jobs:
           echo "${{ runner.tool_cache }}\rcedit" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build on windows
         run: |
-          zig build -Dtarget=${{ matrix.arch }}-windows-gnu -Dmode=${{ matrix.mode }} -Dextra=${{ matrix.extra }} --verbose
-          zig build bootstrap -Dtarget=${{ matrix.arch }}-windows-gnu -Dmode=${{ matrix.mode }} -Dextra=${{ matrix.extra }} --verbose
+          zig build -Dtarget=${{ matrix.arch }}-windows-gnu -Dmode=${{ matrix.mode }} --verbose
+          zig build bootstrap -Dtarget=${{ matrix.arch }}-windows-gnu -Dmode=${{ matrix.mode }} --verbose
         shell: bash
-      - name: Upload artifact (extra)
-        uses: actions/upload-artifact@v2
-        if: ${{ matrix.extra }}
-        with:
-          name: bin-${{ matrix.arch }}-${{ runner.os }}-${{ matrix.mode }}-extra
-          path: zig-cache/bin
       - name: Upload artifact
         uses: actions/upload-artifact@v2
-        if: ${{ !matrix.extra }}
         with:
           name: bin-${{ matrix.arch }}-${{ runner.os }}-${{ matrix.mode }}
           path: zig-cache/bin
+  package-extra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Merge folders
+        run: cp -RT extra/inf/ extra/win32/
+      - name: Upload extra
+        uses: actions/upload-artifact@v2
+        with:
+          name: extra-windows
+          path: extra/win32
