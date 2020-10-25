@@ -1671,11 +1671,6 @@ typedef DWORD LCID;
 #define INITIAL_MXCSR 0x1f80
 #define INITIAL_FPCSR 0x027f
 
-  typedef struct DECLSPEC_ALIGN(16) _M128A {
-    ULONGLONG Low;
-    LONGLONG High;
-  } M128A,*PM128A;
-
   typedef struct _XMM_SAVE_AREA32 {
     WORD ControlWord;
     WORD StatusWord;
