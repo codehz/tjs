@@ -82,13 +82,24 @@ jobs:
           path: extra/win32
   create-release:
     runs-on: ubuntu-latest
-    # if: startsWith(github.ref, 'refs/tags/')
     needs: [build-linux, build-windows, package-extra]
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v2
       - name: List folders
         run: |
-          echo "files=$(ls | xargs)" | tee $GITHUB_ENV
-      - name: Test env
-        run: echo ${{ env.files }}
+          echo "files=$(ls | xargs)" | tee -a $GITHUB_ENV
+          echo "time=x$(date +%s)" | tee -a $GITHUB_ENV
+      - uses: meeDamian/github-release@2.0
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        with:
+          tag: ${{ env.time }}
+          prerelease: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: ${{ env.files }}
+      - uses: meeDamian/github-release@2.0
+        if: "startsWith(github.ref, 'refs/tags/')"
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: ${{ env.files }}
+          draft: true
