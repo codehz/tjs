@@ -61,13 +61,6 @@ const Tcc1Info = struct {
             };
             r.dependOn(setupRun(b, tcc.run(), args.toOwnedSlice(), "CC {}/{}", .{ obj.path, obj.base }));
         }
-        if (tgt.os.tag == .windows) {
-            r.dependOn(&b.addInstallDirectory(.{
-                .source_dir = "extra/win32",
-                .install_dir = .Bin,
-                .install_subdir = "",
-            }).step);
-        }
         {
             var args = std.ArrayList([]const u8).init(b.allocator);
             try args.append("-ar");
@@ -103,6 +96,13 @@ const Tcc1Info = struct {
                 .install_subdir = "include",
             }).step);
         };
+        if (tgt.os.tag == .windows) {
+            r.dependOn(&b.addInstallDirectory(.{
+                .source_dir = "extra/win32",
+                .install_dir = .Bin,
+                .install_subdir = "",
+            }).step);
+        }
     }
 };
 
