@@ -96,13 +96,6 @@ const Tcc1Info = struct {
                 .install_subdir = "include",
             }).step);
         };
-        if (tgt.os.tag == .windows) {
-            r.dependOn(&b.addInstallDirectory(.{
-                .source_dir = "extra/win32",
-                .install_dir = .Bin,
-                .install_subdir = "",
-            }).step);
-        }
     }
 };
 
@@ -114,7 +107,7 @@ fn getArchStr(comptime suffix: []const u8, arch: std.builtin.Arch) ![]const u8 {
     };
 }
 
-fn bootstrap(b: *Builder, tcc: *std.build.LibExeObjStep, target: std.zig.CrossTarget) !*std.build.Step {
+fn bootstrap(b: *Builder, tcc: *std.build.LibExeObjStep, target: std.zig.CrossTarget, extra: bool) !*std.build.Step {
     const native = try std.zig.system.NativeTargetInfo.detect(b.allocator, target);
     const ret = b.step("bootstrap", "generate libtcc1 and include");
     const info: Tcc1Info = switch (native.target.os.tag) {
@@ -203,6 +196,13 @@ fn bootstrap(b: *Builder, tcc: *std.build.LibExeObjStep, target: std.zig.CrossTa
         else => return error.TODO,
     };
     try info.build(b, tcc, ret, native.target);
+    if (native.target.os.tag == .windows and extra) {
+        ret.dependOn(&b.addInstallDirectory(.{
+            .source_dir = "extra/win32",
+            .install_dir = .Bin,
+            .install_subdir = "",
+        }).step);
+    }
     return ret;
 }
 
@@ -211,6 +211,7 @@ pub fn build(b: *Builder) !void {
     const native = try std.zig.system.NativeTargetInfo.detect(b.allocator, target);
     const mode = b.option(std.builtin.Mode, "mode", "Build mode") orelse .ReleaseSmall;
     const strip = b.option(bool, "strip", "Enable strip") orelse (mode == .ReleaseSmall);
+    const extra = b.option(bool, "extra", "Enable extra library (windows only)") orelse true;
     const dump_free = b.option(bool, "dump-free", "For GC debug") orelse false;
     if (mode == .Debug and strip) {
         @panic("Disable strip for debug");
@@ -273,18 +274,20 @@ pub fn build(b: *Builder) !void {
             "--application-manifest",
             "src/app.manifest",
             "--set-icon",
-            "src/tjs.ico"
+            "src/tjs.ico",
         });
         exe.install_step.?.step.dependOn(&rcedit.step);
 
-        exe.install_step.?.step.dependOn(&b.addInstallDirectory(.{
-            .source_dir = "extra/inf",
-            .install_dir = .Bin,
-            .install_subdir = ""
-        }).step);
+        if (extra) {
+            exe.install_step.?.step.dependOn(&b.addInstallDirectory(.{
+                .source_dir = "extra/inf",
+                .install_dir = .Bin,
+                .install_subdir = "",
+            }).step);
+        }
     }
 
-    const tcc1 = try bootstrap(b, tcc, target);
+    const tcc1 = try bootstrap(b, tcc, target, extra);
 
     const run_cmd = exe.run();
     run_cmd.step.dependOn(b.getInstallStep());
