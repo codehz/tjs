@@ -1,4 +1,5 @@
 #define _CRT_SECURE_NO_WARNINGS
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
 #include <fcntl.h>
@@ -78,4 +79,11 @@ int utf8_open(const char *path, int flag, ...) {
 int utf8_system(const char *command) {
   wstr wcommand = utf8to16(command);
   return _wsystem(wcommand);
+}
+
+HMODULE utf8_LoadLibrary(LPCSTR module) {
+  wstr wmodule = utf8to16(module);
+  return LoadLibraryExW(wmodule, NULL,
+                        LOAD_LIBRARY_SEARCH_DEFAULT_DIRS |
+                            LOAD_LIBRARY_SEARCH_USER_DIRS);
 }

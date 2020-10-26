@@ -674,10 +674,27 @@ pub const c = opaque {
         Compiler.load(ctx, mod);
     }
 
+    extern "Kernel32" fn AddDllDirectory(NewDirectory: [*:0]const u16) callconv(.Stdcall) ?*c_void;
+
+    pub fn appendLibSearchPath(ctx: *js.JsContext, this: js.JsValue, argc: c_int, argv: [*]js.JsValue) callconv(.C) js.JsValue {
+        if (comptime std.Target.current.os.tag != .windows) {
+            return js.JsContext.throw(.{ .Type = "Unsupported OS" });
+        } else {
+            if (argc != 1) return ctx.throw(.{ .Type = "require 1 args" });
+            const str: js.JsString = argv[0].as(js.JsString, ctx) catch return ctx.throw(.{ .Type = "not a string" });
+            defer str.deinit(ctx);
+            const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
+            const u16str = std.unicode.utf8ToUtf16LeWithNull(allocator, str.data) catch return ctx.throw(.OutOfMemory);
+            defer allocator.free(u16str);
+            return js.JsValue.from(AddDllDirectory(u16str.ptr) != null);
+        }
+    }
+
     pub const storage = [_]E{
         E.genProp("os", .{ .str = cTagName(target.os.tag) }, .{}),
         E.genProp("arch", .{ .str = cTagName(target.cpu.arch) }, .{}),
         E.genProp("abi", .{ .str = cTagName(target.abi) }, .{}),
+        E.genFunction("appendLibSearchPath", .{ .length = 1, .func = .{ .generic = appendLibSearchPath } }),
     };
 
     pub const extra = &[_][*:0]const u8{"Compiler"};

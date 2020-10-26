@@ -8,6 +8,9 @@ declare module "builtin:c" {
   export const arch: "i386" | "x86_64" | "aarch64";
   export const abi: "gnu" | "musl";
 
+  /** Append to library search paths */
+  export function appendLibSearchPath(path: string): boolean;
+
   /** The core compiler */
   export class Compiler {
     /** Construct compiler, specify output type, only type=memory can be used to run or relocate */
