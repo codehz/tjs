@@ -678,7 +678,7 @@ pub const c = opaque {
 
     pub fn appendLibSearchPath(ctx: *js.JsContext, this: js.JsValue, argc: c_int, argv: [*]js.JsValue) callconv(.C) js.JsValue {
         if (comptime std.Target.current.os.tag != .windows) {
-            return js.JsContext.throw(.{ .Type = "Unsupported OS" });
+            return ctx.throw(.{ .Type = "Unsupported OS" });
         } else {
             if (argc != 1) return ctx.throw(.{ .Type = "require 1 args" });
             const str: js.JsString = argv[0].as(js.JsString, ctx) catch return ctx.throw(.{ .Type = "not a string" });
