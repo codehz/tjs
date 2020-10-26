@@ -11,8 +11,8 @@ const scoped = std.log.scoped(.main);
 
 pub const enable_segfault_handler = false;
 
-fn setModuleMeta(ctx: *js.JsContext, root: js.JsValue, url: [:0]const u8, is_main: bool) !*js.JsModuleDef {
-    scoped.debug("set module meta for {} (url: {}, main: {})", .{ root, url, is_main });
+fn setModuleMeta(ctx: *js.JsContext, root: js.JsValue, url: [:0]const u8, args: ?[][:0]const u8) !*js.JsModuleDef {
+    scoped.debug("set module meta for {} (url: {})", .{ root, url });
     if (root.getNormTag() != .Module) return error.NotAModule;
     const ret: *js.JsModuleDef = root.getPointerT(js.JsModuleDef).?;
     const meta = ret.getImportMeta(ctx);
@@ -31,7 +31,17 @@ fn setModuleMeta(ctx: *js.JsContext, root: js.JsValue, url: [:0]const u8, is_mai
         .writable = false,
         .enumerable = true,
         .data = .{
-            .value = js.JsValue.from(is_main),
+            .value = block: {
+                if (args) |notnull| {
+                    var obj = js.JsValue.init(ctx, .Array);
+                    for (notnull) |item, i| {
+                        try obj.setProperty(ctx, i, js.JsValue.init(ctx, .{ .String = item }));
+                    }
+                    break :block obj;
+                } else {
+                    break :block js.JsValue.init(ctx, .Undefined);
+                }
+            },
         },
     });
     if (!res) return error.FailedToDefineProperty;
@@ -117,7 +127,7 @@ const Loader = struct {
             return null;
         };
         defer allocator.free(murl);
-        return setModuleMeta(ctx, value, murl, false) catch {
+        return setModuleMeta(ctx, value, murl, null) catch {
             const errstr = std.fmt.allocPrint0(allocator, "eval module '{}' failed", .{filename}) catch return null;
             defer allocator.free(errstr);
             _ = ctx.throw(.{ .Reference = errstr });
@@ -191,7 +201,7 @@ pub fn main() anyerror!void {
 
     const val = ctx.eval(contents, rooturl, .{ .module = true, .compile = true });
     if (val.getNormTag() == .Module) {
-        _ = try setModuleMeta(ctx, val, rooturl, true);
+        _ = try setModuleMeta(ctx, val, rooturl, args[1..]);
         const ret = ctx.evalFunction(val);
         defer ret.deinit(ctx);
         if (ret.getNormTag() == .Exception) {

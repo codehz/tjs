@@ -1,6 +1,6 @@
 declare interface ImportMeta {
   readonly url: string;
-  readonly main: boolean;
+  readonly main: string | undefined;
 }
 
 declare module "builtin:c" {
