@@ -517,8 +517,8 @@ typedef struct _STRING32 {
   USHORT Length;
   USHORT MaximumLength;
   ULONG  Buffer;
-} STRING32, *PSTRING32, 
-  UNICODE_STRING32, *PUNICODE_STRING32, 
+} STRING32, *PSTRING32,
+  UNICODE_STRING32, *PUNICODE_STRING32,
   ANSI_STRING32, *PANSI_STRING32;
 
 typedef struct _STRING64 {
@@ -526,7 +526,7 @@ typedef struct _STRING64 {
   USHORT MaximumLength;
   ULONGLONG Buffer;
 } STRING64, *PSTRING64,
-  UNICODE_STRING64, *PUNICODE_STRING64, 
+  UNICODE_STRING64, *PUNICODE_STRING64,
   ANSI_STRING64, *PANSI_STRING64;
 
 /* LangID and NLS */
@@ -704,7 +704,9 @@ typedef struct _GROUP_AFFINITY {
 #define Int64ShrlMod32(a, b) (((ULONGLONG) (a)) >> (b))
 
 /* C_ASSERT Definition */
+#ifndef C_ASSERT
 #define C_ASSERT(expr) extern char (*c_assert(void)) [(expr) ? 1 : -1]
+#endif
 
 #define VER_WORKSTATION_NT                  0x40000000
 #define VER_SERVER_NT                       0x80000000
