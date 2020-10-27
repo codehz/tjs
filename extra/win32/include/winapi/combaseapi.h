@@ -257,27 +257,6 @@ WINOLEAPI CoCreateInstance (REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsCon
 WINOLEAPI CoCreateInstanceEx (REFCLSID Clsid, IUnknown *punkOuter, DWORD dwClsCtx, COSERVERINFO *pServerInfo, DWORD dwCount, MULTI_QI *pResults);
 #endif
 
-#if WINAPI_FAMILY == WINAPI_FAMILY_APP
-  __forceinline HRESULT CoCreateInstance (REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID *ppv) {
-    MULTI_QI OneQI;
-    HRESULT hr;
-
-    OneQI.pItf = NULL;
-#ifdef __cplusplus
-    OneQI.pIID = &riid;
-#else
-    OneQI.pIID = riid;
-#endif
-    hr = CoCreateInstanceFromApp (rclsid, pUnkOuter, dwClsContext, NULL, 1,&OneQI);
-    *ppv = OneQI.pItf;
-    return FAILED (hr) ? hr : OneQI.hr;
-  }
-
-  __forceinline HRESULT CoCreateInstanceEx (REFCLSID Clsid, IUnknown *punkOuter, DWORD dwClsCtx, COSERVERINFO *pServerInfo, DWORD dwCount, MULTI_QI *pResults) {
-    return CoCreateInstanceFromApp (Clsid, punkOuter, dwClsCtx, pServerInfo, dwCount, pResults);
-  }
-#endif
-
 #if WINAPI_FAMILY_PARTITION (WINAPI_PARTITION_DESKTOP)
 WINOLEAPI CoGetCancelObject (DWORD dwThreadId, REFIID iid, void **ppUnk);
 WINOLEAPI CoSetCancelObject (IUnknown *pUnk);
