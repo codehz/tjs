@@ -89,7 +89,7 @@ jobs:
       - name: List folders
         run: |
           for win in bin-*-Windows-*; do
-            cp -r ../extra-windows/* $win
+            cp -r extra-windows/* $win
           done
           rm -rf extra-windows
           for dir in bin-*; do
