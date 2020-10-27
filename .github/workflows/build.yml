@@ -88,7 +88,15 @@ jobs:
         uses: actions/download-artifact@v2
       - name: List folders
         run: |
-          echo "files=$(ls | xargs)" | tee -a $GITHUB_ENV
+          for win in bin-*-Windows-*; do
+            cp -r ../extra-windows/* $win
+          done
+          rm -rf extra-windows
+          for dir in bin-*; do
+            mv $dir ${dir/bin-/}
+          done
+          files=(*)
+          echo "files=${files[@]}" | tee -a $GITHUB_ENV
           echo "time=x$(date +%s)" | tee -a $GITHUB_ENV
       - name: Tag snapshot
         if: "!startsWith(github.ref, 'refs/tags/')"
