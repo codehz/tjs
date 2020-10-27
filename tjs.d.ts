@@ -75,8 +75,27 @@ declare module "builtin:c" {
 }
 
 declare module "builtin:io" {
+  /**
+   * Output to stdout
+   * @param args output content
+   */
   export function log(...args: any[]): void;
+  /**
+   * Output to stderr
+   * @param args output content
+   */
   export function err(...args: any[]): void;
+
+  /**
+   * Like log, but won't append \n
+   * @param args output content
+   */
+  export function print(...args: any[]): void;
+  /**
+   * Like err, but won't append \n
+   * @param args output content
+   */
+  export function errprint(...args: any[]): void;
 }
 
 declare module "builtin:utf8" {
