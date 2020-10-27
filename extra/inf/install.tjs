@@ -65,7 +65,7 @@ void msg(wchar_t const *str) {
   MessageBox(NULL, str, GetCommandLine(), MB_SETFOREGROUND);
 }
 
-HRESULT taskcb(
+CALLBACK HRESULT taskcb(
   HWND hwnd,
   UINT msg,
   WPARAM wParam,
