@@ -42,6 +42,8 @@ typedef struct __tjscallback_data {
 
 extern int tjs_notify(tjscallback cb);
 extern int tjs_notify_data(tjscallback cb, size_t num, tjscallback_data const *ptr);
+extern tjscallback tjs_duplicate_callback(tjscallback cb);
+extern void tjs_free_callback(tjscallback cb);
 
 #define TJS_NOTIFY_DATA(cb, n, list...) tjs_notify_data(cb, n, (tjscallback_data[n]){ list })
 #define TJS_DATA_VOID() (tjscallback_data){ type: 0 }

@@ -592,6 +592,14 @@ pub const c = opaque {
             return -1;
         }
 
+        fn cloneCallback(val: js.JsValue) callconv(.C) js.JsValue {
+            return val.clone();
+        }
+
+        fn freeCallback(val: js.JsValue) callconv(.C) void {
+            val.deinit(currentContext);
+        }
+
         fn newInternal(ot: cc.OutputType) !*TinyCC {
             const tcc = try TinyCC.init();
             errdefer tcc.deinit();
@@ -609,6 +617,18 @@ pub const c = opaque {
                     .bind = .{
                         .name = "tjs_notify_data",
                         .value = notifyCallbackData,
+                    },
+                });
+                try tcc.apply(.{
+                    .bind = .{
+                        .name = "tjs_duplicate_callback",
+                        .value = cloneCallback,
+                    },
+                });
+                try tcc.apply(.{
+                    .bind = .{
+                        .name = "tjs_free_callback",
+                        .value = freeCallback,
                     },
                 });
             }
