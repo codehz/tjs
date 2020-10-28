@@ -113,7 +113,11 @@ const Loader = struct {
             return null;
         };
         defer allocator.free(data);
-        const value = ctx.eval(data, filename, .{ .module = true, .compile = true });
+        const murl = makeUrl(allocator, filename) catch {
+            _ = ctx.throw(.OutOfMemory);
+            return null;
+        };
+        const value = ctx.eval(data, murl, .{ .module = true, .compile = true });
         if (value.getNormTag() == .Exception) {
             defer value.deinit(ctx);
             ctx.dumpError();
@@ -122,10 +126,6 @@ const Loader = struct {
             _ = ctx.throw(.{ .Reference = errstr });
             return null;
         }
-        const murl = makeUrl(allocator, filename) catch {
-            _ = ctx.throw(.OutOfMemory);
-            return null;
-        };
         defer allocator.free(murl);
         return setModuleMeta(ctx, value, murl, null) catch {
             const errstr = std.fmt.allocPrint0(allocator, "eval module '{}' failed", .{filename}) catch return null;
