@@ -17,6 +17,8 @@ declare module "builtin:c" {
     constructor(type: "memory" | "exe" | "dll" | "obj" | "preprocessor");
     /** Check if it is a valid compiler */
     get valid(): boolean;
+    /** Add compiler option */
+    option(opt: String): void
     /** Compile a string containing a C source */
     compile(code: string): void;
     /** Add a file (C file, dll, object, library, ld script) */
