@@ -192,37 +192,71 @@ const Compiler = opaque {
             const obj: js.JsValue = argv[0];
             const names = obj.getOwnPropertyNames(ctx, .{}) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
             var funcs = std.ArrayListUnmanaged(FunctionInfo).initCapacity(allocator, names.len) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
-            errdefer {
+            var haserr = false;
+            defer if (haserr) {
                 for (funcs.items) |item| item.deinit(allocator);
                 funcs.deinit(allocator);
-            }
+            };
             var cbuffer: std.fifo.LinearFifo(u8, .Dynamic) = std.fifo.LinearFifo(u8, .Dynamic).init(allocator);
             const out = cbuffer.writer();
-            out.writeAll("#include <tjs.h>\n\n") catch return ctx.throw(.OutOfMemory);
+            out.writeAll("#include <tjs.h>\n\n") catch {
+                haserr = true;
+                return ctx.throw(.OutOfMemory);
+            };
             for (names) |item| {
                 const value = obj.getProperty(ctx, item.atom) orelse continue;
-                const str = item.atom.toCString(ctx).?.dupe(ctx, allocator) catch return ctx.throw(.OutOfMemory);
-                const f = fixFunction(allocator, ctx, tcc, item.atom, str, value) catch |e| return ctx.throw(.{ .Type = @errorName(e) });
-                errdefer f.deinit(allocator);
+                const str = item.atom.toCString(ctx).?.dupe(ctx, allocator) catch {
+                    haserr = true;
+                    return ctx.throw(.OutOfMemory);
+                };
+                const f = fixFunction(allocator, ctx, tcc, item.atom, str, value) catch |e| {
+                    haserr = true;
+                    return ctx.throw(.{ .Type = @errorName(e) });
+                };
+                defer if (haserr) {
+                    f.deinit(allocator);
+                };
                 funcs.appendAssumeCapacity(f);
-                f.gencode(out) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
+                f.gencode(out) catch |e| {
+                    haserr = true;
+                    return ctx.throw(.{ .Internal = @errorName(e) });
+                };
             }
-            out.writeByte(0) catch return ctx.throw(.OutOfMemory);
+            out.writeByte(0) catch {
+                haserr = true;
+                return ctx.throw(.OutOfMemory);
+            };
             const slice = cbuffer.readableSlice(0);
-            tcc.apply(.{ .input = .{ .content = @ptrCast([*:0]const u8, slice.ptr) } }) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
-            tcc.relocate() catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
+            tcc.apply(.{ .input = .{ .content = @ptrCast([*:0]const u8, slice.ptr) } }) catch |e| {
+                haserr = true;
+                return ctx.throw(.{ .Internal = @errorName(e) });
+            };
+            tcc.relocate() catch |e| {
+                haserr = true;
+                return ctx.throw(.{ .Internal = @errorName(e) });
+            };
             for (funcs.items) |*item| {
                 var arena = std.heap.ArenaAllocator.init(allocator);
                 defer arena.deinit();
-                const deconame = std.fmt.allocPrint0(&arena.allocator, "${}", .{item.name}) catch return ctx.throw(.OutOfMemory);
+                const deconame = std.fmt.allocPrint0(&arena.allocator, "${}", .{item.name}) catch {
+                    haserr = true;
+                    return ctx.throw(.OutOfMemory);
+                };
                 const ptr = tcc.get(deconame) orelse {
+                    haserr = true;
                     const emsg = std.fmt.allocPrint0(allocator, "symbol {} not found", .{item.name}) catch return ctx.throw(.OutOfMemory);
                     return ctx.throw(.{ .Reference = emsg });
                 };
                 item.*.funcptr = @ptrCast(fn (ptr: [*]const u8) callconv(.C) void, ptr);
             }
-            for (funcs.items) |*item| if (item.loadsym(tcc, ctx)) |ret| return ret;
-            const proxy = allocator.create(FunctionProxy) catch return ctx.throw(.OutOfMemory);
+            for (funcs.items) |*item| if (item.loadsym(tcc, ctx)) |ret| {
+                haserr = true;
+                return ret;
+            };
+            const proxy = allocator.create(FunctionProxy) catch {
+                haserr = true;
+                return ctx.throw(.OutOfMemory);
+            };
             proxy.backref = this.clone();
             proxy.functions = funcs;
             return proxy.create(ctx);
