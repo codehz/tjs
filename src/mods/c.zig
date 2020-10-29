@@ -65,20 +65,23 @@ const FunctionProxy = struct {
     pub fn create(self: *@This(), ctx: *js.JsContext) js.JsValue {
         var ret = js.JsValue.init(ctx, .{ .Object = .{ .class = class } });
         ret.setOpaque(self);
-        for (self.functions.items) |func, i| {
-            _ = ret.defineProperty(ctx, func.atom, .{
+        for (self.functions.items) |item, i| {
+            _ = ret.defineProperty(ctx, item.atom, .{
                 .configurable = false,
                 .writable = false,
                 .enumerable = true,
                 .data = .{
-                    .value = js.JsValue.init(ctx, .{
-                        .Function = .{
-                            .name = func.name,
-                            .length = @intCast(c_int, func.arguments.len),
-                            .func = .{ .generic_magic = fnCall },
-                            .magic = @intCast(u16, i),
-                        },
-                    }),
+                    .value = switch (item.value) {
+                        .Function => |func| js.JsValue.init(ctx, .{
+                            .Function = .{
+                                .name = item.name,
+                                .length = @intCast(c_int, func.arguments.len),
+                                .func = .{ .generic_magic = fnCall },
+                                .magic = @intCast(u16, i),
+                            },
+                        }),
+                        .Address => |addr| js.JsValue.fromBig(ctx, addr),
+                    },
                 },
             }) catch {};
         }
@@ -105,6 +108,7 @@ const Compiler = opaque {
         E.genFunction("output", .{ .length = 1, .func = .{ .generic_magic = fnInput }, .magic = 6 }),
         E.genFunction("option", .{ .length = 1, .func = .{ .generic_magic = fnInput }, .magic = 7 }),
         E.genFunction("run", .{ .length = 0, .func = .{ .generic = fnRun } }),
+        E.genFunction("bind", .{ .length = 0, .func = .{ .generic = fnBind } }),
         E.genFunction("relocate", .{ .length = 1, .func = .{ .generic = fnRelocate } }),
     };
 
@@ -169,100 +173,95 @@ const Compiler = opaque {
     }
 
     fn fnRun(ctx: *js.JsContext, this: js.JsValue, argc: c_int, argv: [*]js.JsValue) callconv(.C) js.JsValue {
-        if (this.getOpaqueT(TinyCC, class)) |tcc| {
-            var ret: c_int = undefined;
-            if (argc == 0) {
-                ret = tcc.run(&[_][*:0]const u8{});
-            } else {
-                const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
-                const args = convertArgs(allocator, ctx, argv[0..@intCast(usize, argc)]) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
-                defer args.deinit(ctx, allocator);
-                ret = tcc.run(args.data);
-            }
-            return js.JsValue.from(ret);
+        const tcc = this.getOpaqueT(TinyCC, class) orelse return ctx.throw(.{ .Type = "invalid compiler" });
+        var ret: c_int = undefined;
+        if (argc == 0) {
+            ret = tcc.run(&[_][*:0]const u8{});
         } else {
-            return ctx.throw(.{ .Type = "invalid compiler" });
+            const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
+            const args = convertArgs(allocator, ctx, argv[0..@intCast(usize, argc)]) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
+            defer args.deinit(ctx, allocator);
+            ret = tcc.run(args.data);
         }
+        return js.JsValue.from(ret);
+    }
+
+    fn fnBind(ctx: *js.JsContext, this: js.JsValue, argc: c_int, argv: [*]js.JsValue) callconv(.C) js.JsValue {
+        const tcc = this.getOpaqueT(TinyCC, class) orelse return ctx.throw(.{ .Type = "invalid compiler" });
+        if (argc != 2) return ctx.throw(.{ .Type = "need two arguments" });
+        const str: js.JsString = argv[0].as(js.JsString, ctx) catch return ctx.throw(.{ .Type = "invalid name" });
+        defer str.deinit(ctx);
+        const addr: i64 = argv[1].as(i64, ctx) catch return ctx.throw(.{ .Type = "invalid addr" });
+        tcc.apply(.{
+            .bind = .{
+                .name = str.data,
+                .value = @intToPtr(?*c_void, @intCast(usize, addr)),
+            },
+        }) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
+        return js.JsValue.fromRaw(.Undefined);
     }
 
     fn fnRelocate(ctx: *js.JsContext, this: js.JsValue, argc: c_int, argv: [*]js.JsValue) callconv(.C) js.JsValue {
-        if (this.getOpaqueT(TinyCC, class)) |tcc| {
-            if (argc != 1) return ctx.throw(.{ .Type = "require 1 args" });
-            const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
-            const obj: js.JsValue = argv[0];
-            const names = obj.getOwnPropertyNames(ctx, .{}) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
-            var funcs = std.ArrayListUnmanaged(FunctionInfo).initCapacity(allocator, names.len) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
-            var haserr = false;
+        const tcc = this.getOpaqueT(TinyCC, class) orelse return ctx.throw(.{ .Type = "invalid compiler" });
+        if (argc != 1) return ctx.throw(.{ .Type = "require 1 args" });
+        const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
+        const obj: js.JsValue = argv[0];
+        const names = obj.getOwnPropertyNames(ctx, .{}) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
+        var funcs = std.ArrayListUnmanaged(FunctionInfo).initCapacity(allocator, names.len) catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
+        var haserr = false;
+        defer if (haserr) {
+            for (funcs.items) |item| item.deinit(allocator);
+            funcs.deinit(allocator);
+        };
+        var cbuffer: std.fifo.LinearFifo(u8, .Dynamic) = std.fifo.LinearFifo(u8, .Dynamic).init(allocator);
+        const out = cbuffer.writer();
+        out.writeAll("#include <tjs.h>\n\n") catch {
+            haserr = true;
+            return ctx.throw(.OutOfMemory);
+        };
+        for (names) |item| {
+            const value = obj.getProperty(ctx, item.atom) orelse continue;
+            const str = item.atom.toCString(ctx).?.dupe(ctx, allocator) catch {
+                haserr = true;
+                return ctx.throw(.OutOfMemory);
+            };
+            const f = fixFunction(allocator, ctx, tcc, item.atom, str, value) catch |e| {
+                haserr = true;
+                return ctx.throw(.{ .Type = @errorName(e) });
+            };
             defer if (haserr) {
-                for (funcs.items) |item| item.deinit(allocator);
-                funcs.deinit(allocator);
+                f.deinit(allocator);
             };
-            var cbuffer: std.fifo.LinearFifo(u8, .Dynamic) = std.fifo.LinearFifo(u8, .Dynamic).init(allocator);
-            const out = cbuffer.writer();
-            out.writeAll("#include <tjs.h>\n\n") catch {
-                haserr = true;
-                return ctx.throw(.OutOfMemory);
-            };
-            for (names) |item| {
-                const value = obj.getProperty(ctx, item.atom) orelse continue;
-                const str = item.atom.toCString(ctx).?.dupe(ctx, allocator) catch {
-                    haserr = true;
-                    return ctx.throw(.OutOfMemory);
-                };
-                const f = fixFunction(allocator, ctx, tcc, item.atom, str, value) catch |e| {
-                    haserr = true;
-                    return ctx.throw(.{ .Type = @errorName(e) });
-                };
-                defer if (haserr) {
-                    f.deinit(allocator);
-                };
-                funcs.appendAssumeCapacity(f);
-                f.gencode(out) catch |e| {
-                    haserr = true;
-                    return ctx.throw(.{ .Internal = @errorName(e) });
-                };
-            }
-            out.writeByte(0) catch {
-                haserr = true;
-                return ctx.throw(.OutOfMemory);
-            };
-            const slice = cbuffer.readableSlice(0);
-            tcc.apply(.{ .input = .{ .content = @ptrCast([*:0]const u8, slice.ptr) } }) catch |e| {
+            funcs.appendAssumeCapacity(f);
+            f.gencode(out) catch |e| {
                 haserr = true;
                 return ctx.throw(.{ .Internal = @errorName(e) });
             };
-            tcc.relocate() catch |e| {
-                haserr = true;
-                return ctx.throw(.{ .Internal = @errorName(e) });
-            };
-            for (funcs.items) |*item| {
-                var arena = std.heap.ArenaAllocator.init(allocator);
-                defer arena.deinit();
-                const deconame = std.fmt.allocPrint0(&arena.allocator, "${}", .{item.name}) catch {
-                    haserr = true;
-                    return ctx.throw(.OutOfMemory);
-                };
-                const ptr = tcc.get(deconame) orelse {
-                    haserr = true;
-                    const emsg = std.fmt.allocPrint0(allocator, "symbol {} not found", .{item.name}) catch return ctx.throw(.OutOfMemory);
-                    return ctx.throw(.{ .Reference = emsg });
-                };
-                item.*.funcptr = @ptrCast(fn (ptr: [*]const u8) callconv(.C) void, ptr);
-            }
-            for (funcs.items) |*item| if (item.loadsym(tcc, ctx)) |ret| {
-                haserr = true;
-                return ret;
-            };
-            const proxy = allocator.create(FunctionProxy) catch {
-                haserr = true;
-                return ctx.throw(.OutOfMemory);
-            };
-            proxy.backref = this.clone();
-            proxy.functions = funcs;
-            return proxy.create(ctx);
-        } else {
-            return ctx.throw(.{ .Type = "invalid compiler" });
         }
+        out.writeByte(0) catch {
+            haserr = true;
+            return ctx.throw(.OutOfMemory);
+        };
+        const slice = cbuffer.readableSlice(0);
+        tcc.apply(.{ .input = .{ .content = @ptrCast([*:0]const u8, slice.ptr) } }) catch |e| {
+            haserr = true;
+            return ctx.throw(.{ .Internal = @errorName(e) });
+        };
+        tcc.relocate() catch |e| {
+            haserr = true;
+            return ctx.throw(.{ .Internal = @errorName(e) });
+        };
+        for (funcs.items) |*item| if (item.loadsym(tcc, ctx)) |ret| {
+            haserr = true;
+            return ret;
+        };
+        const proxy = allocator.create(FunctionProxy) catch {
+            haserr = true;
+            return ctx.throw(.OutOfMemory);
+        };
+        proxy.backref = this.clone();
+        proxy.functions = funcs;
+        return proxy.create(ctx);
     }
 
     const FunctionInfo = struct {
@@ -420,57 +419,82 @@ const Compiler = opaque {
 
         atom: js.JsAtom,
         name: [:0]const u8,
-        arguments: []Type = undefined,
-        result: ?Type = null,
-        funcptr: ?fn (ptr: [*]u8) callconv(.C) void = null,
+        value: SymInfo,
+        const SymInfo = union(enum) {
+            Function: struct {
+                arguments: []Type = undefined,
+                result: ?Type = null,
+                funcptr: ?fn (ptr: [*]u8) callconv(.C) void = null,
+            },
+            Address: usize,
+        };
 
         fn gencode(self: @This(), writer: anytype) !void {
-            try writer.print("extern {0} {1}(", .{ if (self.result) |res| res.gen() else "void", self.name });
-            for (self.arguments) |arg, i| {
-                if (i != 0) try writer.writeAll(", ");
-                try writer.writeAll(arg.gen());
+            switch (self.value) {
+                .Function => |fun| {
+                    try writer.print("extern {0} {1}(", .{ if (fun.result) |res| res.gen() else "void", self.name });
+                    for (fun.arguments) |arg, i| {
+                        if (i != 0) try writer.writeAll(", ");
+                        try writer.writeAll(arg.gen());
+                    }
+                    try writer.writeAll(");\n");
+                    try writer.print("struct pack${} {{\n", .{self.name});
+                    if (fun.result) |result| {
+                        if (!result.allowAsResult()) return error.ResultTypeNotAllowed;
+                        try writer.print("\t{} result __ALIGN__;\n", .{result.gen()});
+                    }
+                    for (fun.arguments) |arg, i| {
+                        try writer.print("\t{} arg${} __ALIGN__;\n", .{ arg.gen(), i });
+                    }
+                    try writer.writeAll("};\n");
+                    try writer.print("void ${0} (struct pack${0} *ptr) {{\n", .{self.name});
+                    try writer.writeAll(if (fun.result != null) "\tptr->result = " else "\t");
+                    try writer.print("{0}(", .{self.name});
+                    for (fun.arguments) |arg, i| {
+                        if (i != 0) try writer.writeAll(", ");
+                        try writer.print("ptr->arg${}", .{i});
+                    }
+                    try writer.writeAll(");\n");
+                    try writer.writeAll("};\n\n");
+                },
+                .Address => {},
             }
-            try writer.writeAll(");\n");
-            try writer.print("struct pack${} {{\n", .{self.name});
-            if (self.result) |result| {
-                if (!result.allowAsResult()) return error.ResultTypeNotAllowed;
-                try writer.print("\t{} result __ALIGN__;\n", .{result.gen()});
-            }
-            for (self.arguments) |arg, i| {
-                try writer.print("\t{} arg${} __ALIGN__;\n", .{ arg.gen(), i });
-            }
-            try writer.writeAll("};\n");
-            try writer.print("void ${0} (struct pack${0} *ptr) {{\n", .{self.name});
-            try writer.writeAll(if (self.result != null) "\tptr->result = " else "\t");
-            try writer.print("{0}(", .{self.name});
-            for (self.arguments) |arg, i| {
-                if (i != 0) try writer.writeAll(", ");
-                try writer.print("ptr->arg${}", .{i});
-            }
-            try writer.writeAll(");\n");
-            try writer.writeAll("};\n\n");
         }
 
         fn loadsym(self: *@This(), tcc: *TinyCC, ctx: *js.JsContext) ?js.JsValue {
             var tempbuffer: [1024]u8 = undefined;
-            var fixed = std.heap.FixedBufferAllocator.init(&tempbuffer);
-            const deco = std.fmt.allocPrint0(&fixed.allocator, "${}", .{self.name}) catch return ctx.throw(.OutOfMemory);
-            const symbol = tcc.get(deco) orelse return ctx.throw(.{ .Reference = std.fmt.bufPrint(&tempbuffer, "{} not exported", .{self.name}) catch return ctx.throw(.OutOfMemory) });
-            self.funcptr = @ptrCast(fn (ptr: [*]u8) callconv(.C) void, symbol);
+            switch (self.value) {
+                .Function => |*fun| {
+                    var fixed = std.heap.FixedBufferAllocator.init(&tempbuffer);
+                    const deco = std.fmt.allocPrint0(&fixed.allocator, "${}", .{self.name}) catch return ctx.throw(.OutOfMemory);
+                    const symbol = tcc.get(deco) orelse return ctx.throw(.{ .Reference = std.fmt.bufPrint(&tempbuffer, "{} not exported", .{self.name}) catch return ctx.throw(.OutOfMemory) });
+                    fun.funcptr = @ptrCast(fn (ptr: [*]u8) callconv(.C) void, symbol);
+                },
+                .Address => |*addr| {
+                    const symbol = tcc.get(self.name) orelse return ctx.throw(.{ .Reference = std.fmt.bufPrint(&tempbuffer, "{} not exported", .{self.name}) catch return ctx.throw(.OutOfMemory) });
+                    addr.* = @ptrToInt(symbol);
+                },
+            }
             return null;
         }
 
         fn calcSize(self: @This()) usize {
             var ret: usize = 0;
-            if (self.result) |result| ret += result.size();
-            for (self.arguments) |arg| ret += arg.size();
+            switch (self.value) {
+                .Function => |fun| {
+                    if (fun.result) |result| ret += result.size();
+                    for (fun.arguments) |arg| ret += arg.size();
+                },
+                .Address => {},
+            }
             return ret;
         }
 
         fn invoke(self: @This(), allocator: *std.mem.Allocator, ctx: *js.JsContext, args: []js.JsValue) js.JsValue {
-            if (args.len != self.arguments.len) {
+            const fun = self.value.Function;
+            if (args.len != fun.arguments.len) {
                 var errbuf: [128]u8 = undefined;
-                return ctx.throw(.{ .Type = std.fmt.bufPrint(&errbuf, "invalid arguments number, require {}, found {}", .{ self.arguments.len, args.len }) catch "invalid arguments number" });
+                return ctx.throw(.{ .Type = std.fmt.bufPrint(&errbuf, "invalid arguments number, require {}, found {}", .{ fun.arguments.len, args.len }) catch "invalid arguments number" });
             }
             var buf = allocator.alloc(u8, self.calcSize()) catch return ctx.throw(.OutOfMemory);
             errdefer allocator.free(buf);
@@ -481,8 +505,8 @@ const Compiler = opaque {
                 for (argsdata.items) |item| item.deinit(ctx, allocator);
                 argsdata.deinit(allocator);
             }
-            if (self.result) |res| fifo.update(res.size());
-            for (self.arguments) |arg, i| {
+            if (fun.result) |res| fifo.update(res.size());
+            for (fun.arguments) |arg, i| {
                 const data = Data.from(arg, args[i], ctx, allocator) catch |e| return ctx.throw(.{ .Type = @errorName(e) });
                 data.dump(writer) catch |e| {
                     data.deinit(ctx, allocator);
@@ -490,19 +514,28 @@ const Compiler = opaque {
                 };
                 argsdata.appendAssumeCapacity(data);
             }
-            self.funcptr.?(buf.ptr);
-            return if (self.result) |res| res.read(buf.ptr, ctx) else js.JsValue.fromRaw(.Undefined);
+            fun.funcptr.?(buf.ptr);
+            return if (fun.result) |res| res.read(buf.ptr, ctx) else js.JsValue.fromRaw(.Undefined);
         }
 
         fn deinit(self: @This(), allocator: *std.mem.Allocator) void {
             allocator.free(self.name);
-            allocator.free(self.arguments);
+            switch (self.value) {
+                .Function => |fun| {
+                    allocator.free(fun.arguments);
+                },
+                .Address => {},
+            }
         }
     };
 
     fn fixFunction(allocator: *std.mem.Allocator, ctx: *js.JsContext, tcc: *TinyCC, atom: js.JsAtom, parameterName: [:0]const u8, value: js.JsValue) !FunctionInfo {
-        if (value.getNormTag() != .String) return error.RequireString;
-        var ret: FunctionInfo = .{ .atom = atom, .name = parameterName };
+        var ret: FunctionInfo = .{ .atom = atom, .name = parameterName, .value = undefined };
+        if (value.getTag() == .Null) {
+            ret.value = .{ .Address = undefined };
+            return ret;
+        } else if (value.getTag() != .String) return error.RequireString;
+        ret.value = .{ .Function = .{} };
         const str = try value.as(js.JsString, ctx);
         defer str.deinit(ctx);
         var tempargs = std.ArrayListUnmanaged(FunctionInfo.Type){};
@@ -541,7 +574,7 @@ const Compiler = opaque {
                     }
                 },
                 .result => {
-                    ret.result = switch (ch) {
+                    ret.value.Function.result = switch (ch) {
                         'i' => .integer,
                         'd' => .double,
                         'b' => .bigint,
@@ -552,7 +585,7 @@ const Compiler = opaque {
                 },
             }
         }
-        ret.arguments = tempargs.toOwnedSlice(allocator);
+        ret.value.Function.arguments = tempargs.toOwnedSlice(allocator);
         return ret;
     }
 

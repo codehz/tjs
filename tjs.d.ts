@@ -33,10 +33,12 @@ declare module "builtin:c" {
     sysinclude(path: string): void;
     /** Output an executable, library or object file. DO NOT call relocate before. */
     output(path: string): void;
+    /** Bind symbol to address */
+    bind(name: string, addr: bigint): void;
     /** Link and run main() function and return its value. DO NOT call relocate before. */
     run(...args: string[]): number;
     /** Do all relocations and returns relocated symbols */
-    relocate<Recipe extends Record<string, string>>(recipe: Recipe): Relocated<Recipe>;
+    relocate<Recipe extends Record<string, string | null>>(recipe: Recipe): Relocated<Recipe>;
   }
 
   type SimpleParameterMapper<T extends string> =
@@ -71,8 +73,12 @@ declare module "builtin:c" {
     T extends `${infer args}!${infer res}` ? (...args: ParameterMapper<args>) => ResultMapper<res> :
     T extends `${infer args}` ? (...args: ParameterMapper<args>) => void : never;
 
-  export type Relocated<T extends Record<string, string>> = {
-    [K in keyof T]: T[K] extends string ? FunctionMapper<T[K]> : never;
+  export type Relocated<T extends Record<string, string | null>> = {
+    [K in keyof T]: T[K] extends string
+      ? FunctionMapper<T[K]>
+      : T[K] extends null
+      ? bigint
+      : never;
   };
 }
 
