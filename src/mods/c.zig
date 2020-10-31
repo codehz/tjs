@@ -672,10 +672,20 @@ const Compiler = opaque {
     }
 
     fn newInternal(ot: cc.OutputType) !*TinyCC {
+        var curdirbuf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
+        const curdir = try std.process.getCwd(curdirbuf[0..]);
+        curdirbuf[curdir.len] = 0;
+        const curdirz = curdir[0..:0];
         const tcc = try TinyCC.init();
         errdefer tcc.deinit();
         try tcc.setup();
         try tcc.apply(.{ .output = ot });
+        try tcc.apply(.{
+            .define = .{
+                .name = "__TJS_DIRNAME__",
+                .value = curdirz,
+            },
+        });
         if (ot == .memory) {
             try tcc.apply(.{ .define = .{ .name = "__TJS_MEMORY__" } });
             try tcc.apply(.{
