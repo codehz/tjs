@@ -14,10 +14,12 @@ const compiler = new Compiler("memory");
 // link to user32 to use MessageBoxA
 compiler.link("user32");
 // and place your c code inline
-compiler.compile(`
+compiler.compile(String.raw`
+#define UNICODE
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-void msgbox(char const *text) {
-  MessageBoxA(NULL, text, "from js", 0);
+void msgbox(PCWSTR text) {
+  MessageBox(NULL, text, L"from js", 0);
 }
 `);
 // and relocate the function
