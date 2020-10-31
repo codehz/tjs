@@ -107,6 +107,7 @@ const Compiler = opaque {
         E.genFunction("sysinclude", .{ .length = 1, .func = .{ .generic_magic = fnInput }, .magic = 5 }),
         E.genFunction("output", .{ .length = 1, .func = .{ .generic_magic = fnInput }, .magic = 6 }),
         E.genFunction("option", .{ .length = 1, .func = .{ .generic_magic = fnInput }, .magic = 7 }),
+        E.genFunction("define", .{ .length = 1, .func = .{ .generic_magic = fnInput }, .magic = 8 }),
         E.genFunction("run", .{ .length = 0, .func = .{ .generic = fnRun } }),
         E.genFunction("bind", .{ .length = 0, .func = .{ .generic = fnBind } }),
         E.genFunction("relocate", .{ .length = 1, .func = .{ .generic = fnRelocate } }),
@@ -131,6 +132,7 @@ const Compiler = opaque {
                 5 => tcc.apply(.{ .system_include = content.data }),
                 6 => tcc.writeFile(content.data),
                 7 => tcc.apply(.{ .opt = content.data }),
+                8 => tcc.apply(.{ .define = .{ .name = content.data } }),
                 else => @panic("unsupported magic"),
             };
             re catch |e| return ctx.throw(.{ .Internal = @errorName(e) });
