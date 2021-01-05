@@ -223,6 +223,7 @@ pub fn build(b: *Builder) !void {
     tccobj.linkLibC();
     tccobj.addIncludeDir("tmp");
     if (native.target.os.tag == .windows) {
+        tccobj.defineCMacro("TCC_TARGET_PE=1");
         tccobj.linkSystemLibrary("ntdll");
         tccobj.addCSourceFile("extra/utf8fix/fix.c", &[_][]const u8{});
     }
