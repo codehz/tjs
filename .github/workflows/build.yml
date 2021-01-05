@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [x86_64, i386]
+        arch: [x86_64]
         mode: [ReleaseSafe, ReleaseFast, ReleaseSmall, Debug]
     runs-on: ubuntu-latest
     container: alpine:latest
