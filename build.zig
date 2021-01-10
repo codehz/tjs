@@ -241,6 +241,7 @@ pub fn build(b: *Builder) !void {
     tcc.addCSourceFile("vendor/tinycc/tcc.c", &[_][]const u8{"-Wno-everything"});
     tcc.setTarget(target);
     tcc.setBuildMode(mode);
+    tcc.install();
 
     const quickjs = b.addStaticLibrary("quickjs", null);
     quickjs.disable_sanitize_c = true;
