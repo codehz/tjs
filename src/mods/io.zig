@@ -11,7 +11,7 @@ fn printGen(comptime useStdOut: bool, comptime addnl: bool) fn (ctx: *js.JsConte
             for (argv[0..@intCast(usize, argc)]) |val| {
                 const str: js.JsString = val.as(js.JsString, ctx) catch return ctx.throw(.{ .Internal = "failed to conver to string" });
                 defer str.deinit(ctx);
-                out.print("{}", .{str.data}) catch {};
+                out.print("{s}", .{str.data}) catch {};
             }
             if (addnl) {
                 out.writeByte('\n') catch {};

@@ -28,13 +28,13 @@ const Tcc1Info = struct {
             b.zig_exe,
             "../lib/zig",
         });
-        const tripletinc = try std.fmt.allocPrint(b.allocator, "libc/include/{}", .{tgt.linuxTriple(b.allocator)});
+        const tripletinc = try std.fmt.allocPrint(b.allocator, "libc/include/{s}", .{tgt.linuxTriple(b.allocator)});
         for (self.objs) |obj| {
             var args = std.ArrayList([]const u8).init(b.allocator);
             try args.append("-o");
-            try args.append(try std.fmt.allocPrint(b.allocator, "tmp/o/{}.o", .{obj.base}));
+            try args.append(try std.fmt.allocPrint(b.allocator, "tmp/o/{s}.o", .{obj.base}));
             try args.append("-c");
-            try args.append(try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{}/{}.{}", .{ obj.path, obj.base, std.meta.tagName(obj.ext) }));
+            try args.append(try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{s}/{s}.{s}", .{ obj.path, obj.base, std.meta.tagName(obj.ext) }));
             try args.append("-I");
             try args.append("vendor/tinycc/include");
             try args.append("-I");
@@ -53,30 +53,30 @@ const Tcc1Info = struct {
             }
             if (self.global_incs) |list| for (list) |inc| {
                 try args.append("-I");
-                try args.append(try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{}", .{inc}));
+                try args.append(try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{s}", .{inc}));
             };
             if (self.extra_incs) |list| for (list) |inc| {
                 try args.append("-I");
-                try args.append(try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{}", .{inc}));
+                try args.append(try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{s}", .{inc}));
             };
-            r.dependOn(setupRun(b, tcc.run(), args.toOwnedSlice(), "CC {}/{}", .{ obj.path, obj.base }));
+            r.dependOn(setupRun(b, tcc.run(), args.toOwnedSlice(), "CC {s}/{s}", .{ obj.path, obj.base }));
         }
         {
             var args = std.ArrayList([]const u8).init(b.allocator);
             try args.append("-ar");
             try args.append("tmp/lib/libtcc1.a");
             for (self.objs) |obj| {
-                try args.append(try std.fmt.allocPrint(b.allocator, "tmp/o/{}.o", .{obj.base}));
+                try args.append(try std.fmt.allocPrint(b.allocator, "tmp/o/{s}.o", .{obj.base}));
             }
             r.dependOn(setupRun(b, tcc.run(), args.toOwnedSlice(), "LD libtcc1.a", .{}));
         }
         if (self.libs) |list| for (list) |lib| {
             var args = std.ArrayList([]const u8).init(b.allocator);
             try args.append("-impdef");
-            try args.append(try std.fmt.allocPrint(b.allocator, "{}.dll", .{lib}));
+            try args.append(try std.fmt.allocPrint(b.allocator, "{s}.dll", .{lib}));
             try args.append("-o");
-            try args.append(try std.fmt.allocPrint(b.allocator, "tmp/lib/{}.def", .{lib}));
-            r.dependOn(setupRun(b, tcc.run(), args.toOwnedSlice(), "IMPDEF {}", .{lib}));
+            try args.append(try std.fmt.allocPrint(b.allocator, "tmp/lib/{s}.def", .{lib}));
+            r.dependOn(setupRun(b, tcc.run(), args.toOwnedSlice(), "IMPDEF {s}", .{lib}));
         };
         r.dependOn(&b.addInstallDirectory(.{
             .source_dir = "tmp/lib",
@@ -91,7 +91,7 @@ const Tcc1Info = struct {
         r.dependOn(&b.addInstallBinFile("src/tjs.h", "include/tjs.h").step);
         if (self.global_incs) |list| for (list) |inc| {
             r.dependOn(&b.addInstallDirectory(.{
-                .source_dir = try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{}", .{inc}),
+                .source_dir = try std.fmt.allocPrint(b.allocator, "vendor/tinycc/{s}", .{inc}),
                 .install_dir = .Bin,
                 .install_subdir = "include",
             }).step);

@@ -151,7 +151,7 @@ pub const JsContext = opaque {
         if (ex.getTag() == .Null) return;
         const str = ex.as(JsString, self) catch return;
         defer str.deinit(self);
-        out.print("{}\n", .{str.data}) catch {};
+        out.print("{s}\n", .{str.data}) catch {};
     }
 
     fn dumpException(self: *@This(), ex: JsValue) void {
@@ -1332,13 +1332,13 @@ pub const JsModuleDef = opaque {
     pub fn init(comptime name: [*:0]const u8, ctx: *JsContext, comptime T: type) !*@This() {
         const Trampoline = opaque {
             fn on_load(_ctx: *JsContext, mod: *JsModuleDef) callconv(.C) c_int {
-                scoped.info("load c module: {}", .{name});
+                scoped.info("load c module: {s}", .{name});
                 _ = JS_SetModuleExportList(_ctx, mod, &T.storage, @intCast(c_int, T.storage.len));
                 if (@hasDecl(T, "load")) T.load(_ctx, mod);
                 return 0;
             }
         };
-        scoped.info("new c module: {}", .{name});
+        scoped.info("new c module: {s}", .{name});
         const ret = JS_NewCModule(ctx, name, Trampoline.on_load) orelse return error.FailedToCreateModule;
         if (@hasDecl(T, "init")) try T.init(ctx, ret);
         for (T.storage) |item| {

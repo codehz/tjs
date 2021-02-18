@@ -434,24 +434,24 @@ const Compiler = opaque {
         fn gencode(self: @This(), writer: anytype) !void {
             switch (self.value) {
                 .Function => |fun| {
-                    try writer.print("extern {0} {1}(", .{ if (fun.result) |res| res.gen() else "void", self.name });
+                    try writer.print("extern {0s} {1s}(", .{ if (fun.result) |res| res.gen() else "void", self.name });
                     for (fun.arguments) |arg, i| {
                         if (i != 0) try writer.writeAll(", ");
                         try writer.writeAll(arg.gen());
                     }
                     try writer.writeAll(");\n");
-                    try writer.print("struct pack${} {{\n", .{self.name});
+                    try writer.print("struct pack${s} {{\n", .{self.name});
                     if (fun.result) |result| {
                         if (!result.allowAsResult()) return error.ResultTypeNotAllowed;
-                        try writer.print("\t{} result __ALIGN__;\n", .{result.gen()});
+                        try writer.print("\t{s} result __ALIGN__;\n", .{result.gen()});
                     }
                     for (fun.arguments) |arg, i| {
-                        try writer.print("\t{} arg${} __ALIGN__;\n", .{ arg.gen(), i });
+                        try writer.print("\t{s} arg${} __ALIGN__;\n", .{ arg.gen(), i });
                     }
                     try writer.writeAll("};\n");
-                    try writer.print("void ${0} (struct pack${0} *ptr) {{\n", .{self.name});
+                    try writer.print("void ${0s} (struct pack${0s} *ptr) {{\n", .{self.name});
                     try writer.writeAll(if (fun.result != null) "\tptr->result = " else "\t");
-                    try writer.print("{0}(", .{self.name});
+                    try writer.print("{0s}(", .{self.name});
                     for (fun.arguments) |arg, i| {
                         if (i != 0) try writer.writeAll(", ");
                         try writer.print("ptr->arg${}", .{i});
@@ -468,12 +468,12 @@ const Compiler = opaque {
             switch (self.value) {
                 .Function => |*fun| {
                     var fixed = std.heap.FixedBufferAllocator.init(&tempbuffer);
-                    const deco = std.fmt.allocPrint0(&fixed.allocator, "${}", .{self.name}) catch return ctx.throw(.OutOfMemory);
-                    const symbol = tcc.get(deco) orelse return ctx.throw(.{ .Reference = std.fmt.bufPrint(&tempbuffer, "{} not exported", .{self.name}) catch return ctx.throw(.OutOfMemory) });
+                    const deco = std.fmt.allocPrint0(&fixed.allocator, "${s}", .{self.name}) catch return ctx.throw(.OutOfMemory);
+                    const symbol = tcc.get(deco) orelse return ctx.throw(.{ .Reference = std.fmt.bufPrint(&tempbuffer, "{s} not exported", .{self.name}) catch return ctx.throw(.OutOfMemory) });
                     fun.funcptr = @ptrCast(fn (ptr: [*]u8) callconv(.C) void, symbol);
                 },
                 .Address => |*addr| {
-                    const symbol = tcc.get(self.name) orelse return ctx.throw(.{ .Reference = std.fmt.bufPrint(&tempbuffer, "{} not exported", .{self.name}) catch return ctx.throw(.OutOfMemory) });
+                    const symbol = tcc.get(self.name) orelse return ctx.throw(.{ .Reference = std.fmt.bufPrint(&tempbuffer, "{s} not exported", .{self.name}) catch return ctx.throw(.OutOfMemory) });
                     addr.* = @ptrToInt(symbol);
                 },
             }
@@ -775,7 +775,7 @@ pub fn load(ctx: *js.JsContext, mod: *js.JsModuleDef) void {
     Compiler.load(ctx, mod);
 }
 
-extern "Kernel32" fn AddDllDirectory(NewDirectory: [*:0]const u16) callconv(.Stdcall) ?*c_void;
+extern "Kernel32" fn AddDllDirectory(NewDirectory: [*:0]const u16) callconv(if (@import("builtin").arch == .i386) .Stdcall else .C) ?*c_void;
 
 pub fn appendLibSearchPath(ctx: *js.JsContext, this: js.JsValue, argc: c_int, argv: [*]js.JsValue) callconv(.C) js.JsValue {
     if (comptime std.Target.current.os.tag != .windows) {

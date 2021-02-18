@@ -12,7 +12,7 @@ const scoped = std.log.scoped(.main);
 pub const enable_segfault_handler = false;
 
 fn setModuleMeta(ctx: *js.JsContext, root: js.JsValue, url: [:0]const u8, args: ?[][:0]const u8) !*js.JsModuleDef {
-    scoped.debug("set module meta for {} (url: {})", .{ root, url });
+    scoped.debug("set module meta for {s} (url: {s})", .{ root, url });
     if (root.getNormTag() != .Module) return error.NotAModule;
     const ret: *js.JsModuleDef = root.getPointerT(js.JsModuleDef).?;
     const meta = ret.getImportMeta(ctx);
@@ -66,13 +66,13 @@ const Loader = struct {
     header: js.JsModuleLoader = .{ .normalizefn = normalize, .loaderfn = loader },
 
     fn enormalize(allocator: *std.mem.Allocator, ctx: *js.JsContext, base: [:0]const u8, name: [:0]const u8) ![*:0]const u8 {
-        loaderLog.info("try normalize (base: {}, name: {})", .{ base, name });
+        loaderLog.info("try normalize (base: {s}, name: {s})", .{ base, name });
         errdefer loaderLog.warn("failed to normalize", .{});
         const baseurl = try purl.PartialURL.parse(allocator, base);
         defer baseurl.deinit(allocator);
-        loaderLog.debug("parsed url: {}", .{baseurl});
+        loaderLog.debug("parsed url: {s}", .{baseurl});
         const ret = baseurl.resolveModule(allocator, name) orelse return error.ResolveFailed;
-        loaderLog.info("result: {}", .{ret});
+        loaderLog.info("result: {s}", .{ret});
         return ret.ptr;
     }
 
@@ -85,7 +85,7 @@ const Loader = struct {
     fn openEx(allocator: *std.mem.Allocator, filename: []const u8) !std.fs.File {
         return std.fs.cwd().openFile(filename, .{}) catch |e| switch (e) {
             error.FileNotFound => {
-                const added = try std.fmt.allocPrint(allocator, "{}.tjs", .{filename});
+                const added = try std.fmt.allocPrint(allocator, "{s}.tjs", .{filename});
                 defer allocator.free(added);
                 return std.fs.cwd().openFile(added, .{});
             },
@@ -100,14 +100,14 @@ const Loader = struct {
     }
 
     fn loader(self: *js.JsModuleLoader, ctx: *js.JsContext, name: [*:0]const u8) ?*js.JsModuleDef {
-        loaderLog.info("try load module: {}", .{name});
+        loaderLog.info("try load module: {s}", .{name});
         const E = js.JsCFunctionListEntry;
         const allocator = ctx.getRuntime().getOpaqueT(GlobalContext).?.allocator;
         const cmp = std.cstr.cmp;
         const out = std.io.getStdOut().writer();
         const filename = std.mem.span(name);
         const data = readFile(allocator, filename) catch {
-            const errstr = std.fmt.allocPrint0(allocator, "could not load module filename '{}': read failed", .{filename}) catch return null;
+            const errstr = std.fmt.allocPrint0(allocator, "could not load module filename '{s}': read failed", .{filename}) catch return null;
             defer allocator.free(errstr);
             _ = ctx.throw(.{ .Reference = errstr });
             return null;
@@ -121,14 +121,14 @@ const Loader = struct {
         if (value.getNormTag() == .Exception) {
             defer value.deinit(ctx);
             ctx.dumpError();
-            const errstr = std.fmt.allocPrint0(allocator, "eval module '{}' failed", .{filename}) catch return null;
+            const errstr = std.fmt.allocPrint0(allocator, "eval module '{s}' failed", .{filename}) catch return null;
             defer allocator.free(errstr);
             _ = ctx.throw(.{ .Reference = errstr });
             return null;
         }
         defer allocator.free(murl);
         return setModuleMeta(ctx, value, murl, null) catch {
-            const errstr = std.fmt.allocPrint0(allocator, "eval module '{}' failed", .{filename}) catch return null;
+            const errstr = std.fmt.allocPrint0(allocator, "eval module '{s}' failed", .{filename}) catch return null;
             defer allocator.free(errstr);
             _ = ctx.throw(.{ .Reference = errstr });
             return null;
@@ -158,7 +158,7 @@ fn tourl(allocator: *std.mem.Allocator, file: []const u8) ![:0]const u8 {
             }
         }
     }
-    return std.fmt.allocPrint0(allocator, "file:///{}", .{path});
+    return std.fmt.allocPrint0(allocator, "file:///{s}", .{path});
 }
 
 pub fn main() anyerror!void {

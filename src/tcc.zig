@@ -75,7 +75,7 @@ pub const RelocateAction = union(enum) {
 
 pub const TinyCC = opaque {
     fn reportError(user: ?*c_void, message: [*:0]const u8) callconv(.C) void {
-        std.log.scoped(.tcc).err("{}", .{message});
+        std.log.scoped(.tcc).err("{s}", .{message});
     }
 
     pub fn init() !*@This() {
