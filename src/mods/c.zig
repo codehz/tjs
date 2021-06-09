@@ -8,7 +8,7 @@ fn cTagName(comptime tag: anytype) [*:0]const u8 {
     return std.meta.tagName(tag) ++ "";
 }
 
-const target = std.builtin.Target.current;
+const target = std.Target.current;
 var length_atom: js.JsAtom = .invalid;
 threadlocal var currentContext: *js.JsContext = undefined;
 
@@ -775,7 +775,7 @@ pub fn load(ctx: *js.JsContext, mod: *js.JsModuleDef) void {
     Compiler.load(ctx, mod);
 }
 
-extern "Kernel32" fn AddDllDirectory(NewDirectory: [*:0]const u16) callconv(if (@import("builtin").arch == .i386) .Stdcall else .C) ?*c_void;
+extern "Kernel32" fn AddDllDirectory(NewDirectory: [*:0]const u16) callconv(if (target.cpu.arch == .i386) .Stdcall else .C) ?*c_void;
 
 pub fn appendLibSearchPath(ctx: *js.JsContext, this: js.JsValue, argc: c_int, argv: [*]js.JsValue) callconv(.C) js.JsValue {
     if (comptime std.Target.current.os.tag != .windows) {

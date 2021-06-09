@@ -3,9 +3,7 @@ const builtin = std.builtin;
 const Builder = std.build.Builder;
 
 const Tcc1Info = struct {
-    const Extension = enum {
-        c, S
-    };
+    const Extension = enum { c, S };
     const Compile = struct {
         path: []const u8,
         base: []const u8,
@@ -99,7 +97,7 @@ const Tcc1Info = struct {
     }
 };
 
-fn getArchStr(comptime suffix: []const u8, arch: std.builtin.Arch) ![]const u8 {
+fn getArchStr(comptime suffix: []const u8, arch: std.Target.Cpu.Arch) ![]const u8 {
     return switch (arch) {
         .x86_64 => "alloca86_64" ++ suffix,
         .i386 => "alloca86" ++ suffix,

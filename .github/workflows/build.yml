@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 env:
-  zig-version: 0.7.1
+  zig-version: 0.8.0
 
 jobs:
   build-linux:
